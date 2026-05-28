@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>manan-kanchu — AI Code Detector for VS Code</title>
+  <meta name="description" content="Detect AI-generated code, scan vulnerabilities, audit policies, and protect your codebase. Free, open-source VS Code extension supporting Ollama, LM Studio, Claude, GPT, and Gemini." />
+  <meta name="keywords" content="AI code detection, vulnerability scanner, VS Code extension, open source, ChatGPT detection, Claude detection, code audit, security" />
+  <meta property="og:title" content="manan-kanchu — AI Code Detector" />
+  <meta property="og:description" content="Detect AI-generated code, vulnerabilities, and malicious patterns in your codebase." />
+  <meta property="og:type" content="website" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+      --accent2: #bc8cff;
+      --danger: #f85149;
+      --warn: #d29922;
+      --success: #3fb950;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+
+    /* NAV */
+    nav { position: sticky; top: 0; z-index: 100; background: rgba(13,17,23,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 700; font-size: 1.05rem; }
+    .nav-logo { width: 28px; height: 28px; }
+    .nav-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; color: var(--muted); }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--accent); color: #0d1117; border: none; padding: 6px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; text-decoration: none; transition: opacity .2s; }
+    .nav-cta:hover { opacity: .85; }
+
+    /* HERO */
+    .hero { text-align: center; padding: 90px 2rem 70px; max-width: 860px; margin: 0 auto; }
+    .hero-eyebrow { display: inline-block; background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.3); color: var(--accent); border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; font-weight: 600; margin-bottom: 24px; letter-spacing: .5px; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; line-height: 1.15; margin-bottom: 22px; }
+    .hero h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: 1.1rem; color: var(--muted); max-width: 600px; margin: 0 auto 36px; }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--accent); color: #0d1117; padding: 12px 26px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: opacity .2s; }
+    .btn-primary:hover { opacity: .85; }
+    .btn-outline { border: 1px solid var(--border); color: var(--text); padding: 12px 26px; border-radius: 8px; font-size: 0.95rem; text-decoration: none; transition: border-color .2s; }
+    .btn-outline:hover { border-color: var(--accent); }
+    .hero-stats { display: flex; gap: 32px; justify-content: center; margin-top: 50px; flex-wrap: wrap; }
+    .hero-stat { text-align: center; }
+    .hero-stat .val { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+    .hero-stat .lbl { font-size: 0.78rem; color: var(--muted); }
+
+    /* DASHBOARD PREVIEW */
+    .preview-wrap { max-width: 900px; margin: 0 auto 80px; padding: 0 2rem; }
+    .preview-label { text-align: center; font-size: 0.8rem; color: var(--muted); margin-bottom: 14px; letter-spacing: .5px; text-transform: uppercase; }
+    .dashboard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-columns: 220px 1fr; min-height: 320px; }
+    .db-sidebar { background: #0d1117; border-right: 1px solid var(--border); padding: 16px 0; }
+    .db-sidebar-title { font-size: 0.7rem; font-weight: 600; color: var(--muted); padding: 0 16px 8px; text-transform: uppercase; letter-spacing: .5px; }
+    .db-file { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; font-size: 0.8rem; cursor: default; }
+    .db-file:hover { background: rgba(88,166,255,.07); }
+    .db-file .fname { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .db-file .score { font-weight: 700; font-size: 0.75rem; }
+    .score-high { color: var(--danger); }
+    .score-med  { color: var(--warn); }
+    .score-low  { color: var(--success); }
+    .db-main { padding: 20px; }
+    .db-header { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .db-metric { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 100px; }
+    .db-metric .m-val { font-size: 1.4rem; font-weight: 700; }
+    .db-metric .m-lbl { font-size: 0.7rem; color: var(--muted); }
+    .db-findings { display: flex; flex-direction: column; gap: 8px; }
+    .finding { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+    .sev-badge { font-size: 0.68rem; font-weight: 700; border-radius: 4px; padding: 2px 7px; }
+    .sev-critical { background: rgba(248,81,73,.18); color: var(--danger); }
+    .sev-high { background: rgba(210,153,34,.18); color: var(--warn); }
+    .sev-med { background: rgba(88,166,255,.18); color: var(--accent); }
+    .finding-text { font-size: 0.8rem; color: var(--muted); }
+    .finding-file { font-size: 0.75rem; color: var(--muted); opacity: .6; }
+
+    /* SECTIONS */
+    section { padding: 70px 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label { text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--accent); letter-spacing: .8px; text-transform: uppercase; margin-bottom: 10px; }
+    .section-title { text-align: center; font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 700; margin-bottom: 14px; }
+    .section-sub { text-align: center; color: var(--muted); max-width: 580px; margin: 0 auto 48px; }
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* FEATURES */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; }
+    .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: border-color .25s; }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-icon { font-size: 2rem; margin-bottom: 14px; }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+    .feature-tag { display: inline-block; margin-top: 12px; font-size: 0.72rem; font-weight: 600; color: var(--accent); background: rgba(88,166,255,.1); border-radius: 4px; padding: 2px 8px; }
+
+    /* HOW IT WORKS */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .step { text-align: center; padding: 28px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .step-num { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; margin: 0 auto 16px; color: #0d1117; }
+    .step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: 0.83rem; color: var(--muted); }
+
+    /* CODE COMPARISON */
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 680px) { .code-compare { grid-template-columns: 1fr; } }
+    .code-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .code-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 0.78rem; font-weight: 600; }
+    .code-dot { width: 8px; height: 8px; border-radius: 50%; }
+    pre { padding: 16px; font-size: 0.8rem; overflow-x: auto; line-height: 1.65; font-family: 'SF Mono', 'Cascadia Code', monospace; }
+    .ai-highlight { background: rgba(248,81,73,.15); border-left: 2px solid var(--danger); padding-left: 4px; }
+    .code-verdict { padding: 10px 14px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border); }
+
+    /* PROVIDERS */
+    .provider-chain { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+    .provider-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 8px 18px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; }
+    .ptype { font-size: 0.65rem; border-radius: 3px; padding: 1px 6px; font-weight: 700; }
+    .ptype-local { background: rgba(63,185,80,.18); color: var(--success); }
+    .ptype-cloud { background: rgba(88,166,255,.18); color: var(--accent); }
+    .provider-arrow { color: var(--muted); font-size: 1.1rem; }
+    .provider-note { text-align: center; margin-top: 20px; font-size: 0.83rem; color: var(--muted); }
+
+    /* AUDIENCES */
+    .audiences { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+    .audience-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .audience-card .role { font-size: 0.72rem; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .audience-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+    .audience-card p { font-size: 0.83rem; color: var(--muted); }
+
+    /* INSTALL */
+    .install-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .install-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .install-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; }
+    .install-card code { display: block; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 0.8rem; font-family: 'SF Mono', monospace; color: var(--accent); margin-top: 8px; }
+    .install-card p { font-size: 0.82rem; color: var(--muted); }
+
+    /* ROADMAP */
+    .roadmap { display: flex; flex-direction: column; gap: 10px; max-width: 700px; margin: 0 auto; }
+    .rm-item { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+    .rm-version { font-size: 0.72rem; font-weight: 700; color: var(--muted); min-width: 44px; padding-top: 2px; }
+    .rm-item.done { border-left: 3px solid var(--success); }
+    .rm-item.soon { border-left: 3px solid var(--warn); }
+    .rm-item.plan { border-left: 3px solid var(--border); }
+    .rm-status { font-size: 0.7rem; font-weight: 700; border-radius: 4px; padding: 2px 7px; margin-left: auto; white-space: nowrap; }
+    .rm-done { background: rgba(63,185,80,.15); color: var(--success); }
+    .rm-soon { background: rgba(210,153,34,.15); color: var(--warn); }
+    .rm-plan { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .rm-text h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 3px; }
+    .rm-text p { font-size: 0.8rem; color: var(--muted); }
+
+    /* OPEN SOURCE */
+    .oss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .oss-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; text-align: center; }
+    .oss-flag { font-size: 2rem; margin-bottom: 8px; }
+    .oss-item h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+    .oss-item p { font-size: 0.78rem; color: var(--muted); }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 36px 2rem; text-align: center; }
+    .footer-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
+    .footer-logo svg { width: 24px; height: 24px; }
+    .footer-logo span { font-weight: 700; font-size: 1rem; }
+    .footer-links { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color .2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-quechua { color: var(--muted); font-size: 0.78rem; margin-bottom: 8px; font-style: italic; }
+    .footer-copy { color: var(--muted); font-size: 0.78rem; }
+
+    @media (max-width: 700px) {
+      nav .nav-links { display: none; }
+      .dashboard { grid-template-columns: 1fr; }
+      .db-sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <svg class="nav-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="9" stroke="#58a6ff" stroke-width="2.5"/>
+      <line x1="21" y1="21" x2="28" y2="28" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="14" cy="14" r="4" fill="rgba(188,140,255,0.35)"/>
+      <line x1="11" y1="14" x2="17" y2="14" stroke="#bc8cff" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="14" y1="11" x2="14" y2="17" stroke="#bc8cff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    manan-kanchu
+    <span class="nav-badge">v1.0.0</span>
+  </a>
+  <nav class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How It Works</a>
+    <a href="#providers">Providers</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai">GitHub</a>
+  </nav>
+  <a class="nav-cta" href="https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai">Install Free</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <span class="hero-eyebrow">Open Source &bull; Privacy-First &bull; Multi-Provider AI</span>
+  <h1>Detect <span>AI-Generated Code</span><br>Before It Ships</h1>
+  <p class="hero-sub">manan-kanchu scans your codebase for AI-generated code, security vulnerabilities, malicious patterns, and policy violations — powered by local or cloud AI models.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai">Install on VS Code</a>
+    <a class="btn-outline" href="https://github.com/sergioide007/manan-kanchu-code-ai">View on GitHub</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="val">6</div><div class="lbl">Analyzers</div></div>
+    <div class="hero-stat"><div class="val">5</div><div class="lbl">AI Providers</div></div>
+    <div class="hero-stat"><div class="val">20+</div><div class="lbl">Vuln Patterns</div></div>
+    <div class="hero-stat"><div class="val">MIT</div><div class="lbl">License</div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD PREVIEW -->
+<div class="preview-wrap">
+  <p class="preview-label">Live Dashboard Preview</p>
+  <div class="dashboard">
+    <div class="db-sidebar">
+      <div class="db-sidebar-title">Scanned Files</div>
+      <div class="db-file"><span class="fname">auth/login.ts</span><span class="score score-high">94%</span></div>
+      <div class="db-file"><span class="fname">utils/helpers.ts</span><span class="score score-high">87%</span></div>
+      <div class="db-file"><span class="fname">api/router.ts</span><span class="score score-med">62%</span></div>
+      <div class="db-file"><span class="fname">models/user.ts</span><span class="score score-med">55%</span></div>
+      <div class="db-file"><span class="fname">services/db.ts</span><span class="score score-low">21%</span></div>
+      <div class="db-file"><span class="fname">config/env.ts</span><span class="score score-low">8%</span></div>
+    </div>
+    <div class="db-main">
+      <div class="db-header">
+        <div class="db-metric"><div class="m-val" style="color:var(--danger)">3</div><div class="m-lbl">Critical</div></div>
+        <div class="db-metric"><div class="m-val" style="color:var(--warn)">7</div><div class="m-lbl">High</div></div>
+        <div class="db-metric"><div class="m-val" style="color:var(--accent)">12</div><div class="m-lbl">Medium</div></div>
+        <div class="db-metric"><div class="m-val" style="color:var(--accent2)">71%</div><div class="m-lbl">AI Score</div></div>
+      </div>
+      <div class="db-findings">
+        <div class="finding">
+          <span class="sev-badge sev-critical">CRITICAL</span>
+          <div>
+            <div class="finding-text">Hardcoded AWS access key detected</div>
+            <div class="finding-file">config/env.ts:14</div>
+          </div>
+        </div>
+        <div class="finding">
+          <span class="sev-badge sev-high">HIGH</span>
+          <div>
+            <div class="finding-text">SQL query constructed via string concatenation (SQLi risk)</div>
+            <div class="finding-file">services/db.ts:87</div>
+          </div>
+        </div>
+        <div class="finding">
+          <span class="sev-badge sev-med">MEDIUM</span>
+          <div>
+            <div class="finding-text">AI-generated boilerplate — review edge cases</div>
+            <div class="finding-file">auth/login.ts:1–120</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">What It Does</div>
+  <h2 class="section-title">Six Layers of Code Intelligence</h2>
+  <p class="section-sub">Each analyzer runs independently in parallel for speed. Together they give you a complete audit in seconds.</p>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <h3>AI Code Detection</h3>
+      <p>Hybrid scoring — 40% heuristic (comment density, naming patterns, structural uniformity) + 60% deep AI semantic analysis. Works on any programming language.</p>
+      <span class="feature-tag">0–100% confidence score</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>Vulnerability Scanner</h3>
+      <p>20+ OWASP patterns: SQL injection, XSS, command injection, hardcoded secrets, AWS/GCP keys, path traversal, insecure redirects, weak randomness, and more.</p>
+      <span class="feature-tag">OWASP Top 10 + CWE codes</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">☠️</div>
+      <h3>Malicious Code Scanner</h3>
+      <p>Detects credential theft, keyloggers, cookie exfiltration, form hijacking, crypto miners, clipboard hijack, and obfuscated payloads in web pages and scripts.</p>
+      <span class="feature-tag">7 malicious pattern categories</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <h3>Policy Evaluator</h3>
+      <p>10 built-in rules (no eval, no innerHTML, no hardcoded secrets, license compliance…) plus a DSL for custom organizational policies. Block PRs that violate them.</p>
+      <span class="feature-tag">Custom rules supported</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🖥️</div>
+      <h3>Shell Analyzer</h3>
+      <p>Inspects shell commands for destructive operations (rm -rf, mkfs), remote pipe execution, privilege escalation, and suggests safer alternatives inline.</p>
+      <span class="feature-tag">15+ shell risk patterns</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Audit Dashboard</h3>
+      <p>Dark-theme interactive dashboard with score breakdowns, file-level results, finding explorer, policy violations, and one-click report export (Markdown / JSON).</p>
+      <span class="feature-tag">Export Markdown & JSON</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Detection in Three Steps</h2>
+  <p class="section-sub">From a single file to an entire project, manan-kanchu gives you results in seconds.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Select Target</h3>
+      <p>Run on the current file, a selection, or the whole project via command palette, right-click menu, or keyboard shortcut.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Parallel Analysis</h3>
+      <p>All six analyzers run concurrently. Heuristics fire instantly; AI semantic analysis streams from your chosen provider.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Review &amp; Act</h3>
+      <p>Results appear in the dashboard with severity levels, affected lines, and actionable recommendations. Export or sanitize in one click.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- CODE COMPARISON -->
+<section>
+  <div class="section-label">Example Output</div>
+  <h2 class="section-title">Human vs AI Code — Spotted Instantly</h2>
+  <p class="section-sub">manan-kanchu highlights the linguistic and structural patterns that distinguish AI-generated code from human-authored logic.</p>
+  <div class="code-compare">
+    <div class="code-box">
+      <div class="code-header">
+        <div class="code-dot" style="background:var(--success)"></div>
+        Human-authored — auth.ts
+      </div>
+      <pre><span style="color:var(--muted)">// hard-won lesson: JWT exp must match
+// session cookie max-age or we get
+// phantom logouts on mobile Safari</span>
+<span style="color:var(--accent)">function</span> createSession(user) {
+  <span style="color:var(--accent2)">const</span> exp = Date.now() + SESSION_TTL;
+  <span style="color:var(--accent2)">const</span> token = jwt.sign(
+    { sub: user.id, exp },
+    process.env.JWT_SECRET
+  );
+  <span style="color:var(--text)">return</span> { token, exp };
+}</pre>
+      <div class="code-verdict" style="color:var(--success)">✓ Score: 12% — Likely human-written</div>
+    </div>
+    <div class="code-box">
+      <div class="code-header">
+        <div class="code-dot" style="background:var(--danger)"></div>
+        AI-generated — helpers.ts
+      </div>
+      <pre><span class="ai-highlight"><span style="color:var(--muted)">/**
+ * Validates user input and returns
+ * a boolean indicating validity.
+ */</span></span>
+<span class="ai-highlight"><span style="color:var(--accent)">function</span> validateUserInput(input) {
+  <span style="color:var(--accent2)">if</span> (!input || input.length === 0) {
+    <span style="color:var(--text)">return false</span>;
+  }
+  <span style="color:var(--text)">return true</span>;
+}</span></pre>
+      <div class="code-verdict" style="color:var(--danger)">⚠ Score: 91% — AI-generated patterns detected</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- PROVIDERS -->
+<section id="providers">
+  <div class="section-label">AI Providers</div>
+  <h2 class="section-title">Local First, Cloud as Fallback</h2>
+  <p class="section-sub">manan-kanchu selects providers automatically in order of privacy. Your code never leaves your machine unless you configure a cloud provider.</p>
+  <div class="provider-chain">
+    <div class="provider-pill">🦙 Ollama <span class="ptype ptype-local">LOCAL</span></div>
+    <div class="provider-arrow">→</div>
+    <div class="provider-pill">🏠 LM Studio <span class="ptype ptype-local">LOCAL</span></div>
+    <div class="provider-arrow">→</div>
+    <div class="provider-pill">⚡ Anthropic <span class="ptype ptype-cloud">CLOUD</span></div>
+    <div class="provider-arrow">→</div>
+    <div class="provider-pill">🌐 Gemini <span class="ptype ptype-cloud">CLOUD</span></div>
+    <div class="provider-arrow">→</div>
+    <div class="provider-pill">🤖 OpenAI <span class="ptype ptype-cloud">CLOUD</span></div>
+  </div>
+  <p class="provider-note">API keys are stored in your OS keychain — never written to disk or settings files.</p>
+</section>
+
+<hr class="divider" />
+
+<!-- AUDIENCES -->
+<section>
+  <div class="section-label">Who It's For</div>
+  <h2 class="section-title">Built for Everyone on the Team</h2>
+  <p class="section-sub">From solo developers to enterprise security teams — manan-kanchu adapts to your audit workflow.</p>
+  <div class="audiences">
+    <div class="audience-card">
+      <div class="role">Security Engineer</div>
+      <h3>Catch Vulnerabilities Before Merge</h3>
+      <p>Automated OWASP scanning and malicious code detection integrated directly into VS Code. No CI pipeline required to start.</p>
+    </div>
+    <div class="audience-card">
+      <div class="role">Tech Lead / CTO</div>
+      <h3>Enforce Code Authenticity</h3>
+      <p>Understand what fraction of your codebase was AI-generated. Set thresholds and generate audit-grade reports for stakeholders.</p>
+    </div>
+    <div class="audience-card">
+      <div class="role">Code Reviewer</div>
+      <h3>AI-Assisted Review</h3>
+      <p>Focus review effort on AI-flagged files. manan-kanchu scores confidence per file so you know where to look first.</p>
+    </div>
+    <div class="audience-card">
+      <div class="role">Academic / Educator</div>
+      <h3>Assess Submission Authenticity</h3>
+      <p>Verify exam and assignment submissions. Export per-file AI probability scores as evidence for academic integrity reviews.</p>
+    </div>
+    <div class="audience-card">
+      <div class="role">DevOps / Platform</div>
+      <h3>Policy as Code</h3>
+      <p>Define and enforce custom policies across the organization. Block deployments when policy violations exceed configured thresholds.</p>
+    </div>
+    <div class="audience-card">
+      <div class="role">Open Source Maintainer</div>
+      <h3>Vet Incoming Contributions</h3>
+      <p>Quickly audit PRs from unknown contributors for AI-generated boilerplate, hidden vulnerabilities, or malicious payloads.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="section-label">Get Started</div>
+  <h2 class="section-title">Install in Seconds</h2>
+  <p class="section-sub">No account required. Works offline with a local model. Four ways to install.</p>
+  <div class="install-methods">
+    <div class="install-card">
+      <h3>VS Code Marketplace</h3>
+      <p>Search for <strong>manan-kanchu</strong> in the Extensions panel and click Install.</p>
+    </div>
+    <div class="install-card">
+      <h3>Command Line</h3>
+      <code>code --install-extension<br>sergioide007.manan-kanchu-code-ai</code>
+    </div>
+    <div class="install-card">
+      <h3>VSIX File</h3>
+      <p>Download the <code>.vsix</code> from GitHub Releases and run <em>Install from VSIX…</em> in VS Code.</p>
+    </div>
+    <div class="install-card">
+      <h3>Build from Source</h3>
+      <code>git clone …manan-kanchu-code-ai<br>npm install &amp;&amp; npm run compile<br>npx @vscode/vsce package</code>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ROADMAP -->
+<section>
+  <div class="section-label">Roadmap</div>
+  <h2 class="section-title">Where We're Headed</h2>
+  <p class="section-sub">v1.0 shipped. Here's what's next.</p>
+  <div class="roadmap">
+    <div class="rm-item done">
+      <span class="rm-version">v1.0</span>
+      <div class="rm-text">
+        <h4>Core Analyzers + Dashboard</h4>
+        <p>AI detection, vulnerability scanner, malicious code, policy evaluator, shell analyzer, audit report</p>
+      </div>
+      <span class="rm-status rm-done">SHIPPED</span>
+    </div>
+    <div class="rm-item soon">
+      <span class="rm-version">v1.1</span>
+      <div class="rm-text">
+        <h4>Git Integration</h4>
+        <p>Scan diffs on commit/push, annotate changed lines with AI scores in the git gutter</p>
+      </div>
+      <span class="rm-status rm-soon">SOON</span>
+    </div>
+    <div class="rm-item soon">
+      <span class="rm-version">v1.2</span>
+      <div class="rm-text">
+        <h4>CI/CD Action</h4>
+        <p>GitHub Action + GitLab CI template to enforce AI and vulnerability thresholds in pipelines</p>
+      </div>
+      <span class="rm-status rm-soon">SOON</span>
+    </div>
+    <div class="rm-item plan">
+      <span class="rm-version">v1.3</span>
+      <div class="rm-text">
+        <h4>Team Baseline</h4>
+        <p>Store team-wide AI score baselines and alert when individual commits exceed team norms</p>
+      </div>
+      <span class="rm-status rm-plan">PLANNED</span>
+    </div>
+    <div class="rm-item plan">
+      <span class="rm-version">v1.4</span>
+      <div class="rm-text">
+        <h4>Auto-Sanitize</h4>
+        <p>One-click remediation for common vulnerability patterns — inject parameterized queries, escape HTML, etc.</p>
+      </div>
+      <span class="rm-status rm-plan">PLANNED</span>
+    </div>
+    <div class="rm-item plan">
+      <span class="rm-version">v2.0</span>
+      <div class="rm-text">
+        <h4>Cross-language Model Fine-tuning</h4>
+        <p>Dataset of known human vs AI code to fine-tune a dedicated lightweight detection model</p>
+      </div>
+      <span class="rm-status rm-plan">PLANNED</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- OPEN SOURCE -->
+<section>
+  <div class="section-label">Open Source</div>
+  <h2 class="section-title">Built for the World</h2>
+  <p class="section-sub">MIT licensed. Contributions welcome from every corner of the planet.</p>
+  <div class="oss-grid">
+    <div class="oss-item"><div class="oss-flag">🇺🇸</div><h4>United States</h4><p>Enterprise security & compliance teams</p></div>
+    <div class="oss-item"><div class="oss-flag">🇨🇳</div><h4>China</h4><p>Fast-growing AI-augmented dev teams</p></div>
+    <div class="oss-item"><div class="oss-flag">🇯🇵</div><h4>Japan</h4><p>Precision-focused software quality culture</p></div>
+    <div class="oss-item"><div class="oss-flag">🇩🇪</div><h4>Germany</h4><p>Privacy-conscious GDPR-regulated orgs</p></div>
+    <div class="oss-item"><div class="oss-flag">🇧🇷</div><h4>Latin America</h4><p>Rapidly growing developer communities</p></div>
+    <div class="oss-item"><div class="oss-flag">🌍</div><h4>Everywhere</h4><p>Any team that cares about code authenticity</p></div>
+  </div>
+  <div style="text-align:center">
+    <a class="btn-outline" href="https://github.com/sergioide007/manan-kanchu-code-ai/blob/main/CONTRIBUTING.md">Contribute on GitHub</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="9" stroke="#58a6ff" stroke-width="2.5"/>
+      <line x1="21" y1="21" x2="28" y2="28" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="14" cy="14" r="4" fill="rgba(188,140,255,0.35)"/>
+      <line x1="11" y1="14" x2="17" y2="14" stroke="#bc8cff" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="14" y1="11" x2="14" y2="17" stroke="#bc8cff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span>manan-kanchu</span>
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai">GitHub</a>
+    <a href="https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai">Marketplace</a>
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai/blob/main/PRIVACY.md">Privacy</a>
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai/issues">Issues</a>
+    <a href="https://github.com/sergioide007/manan-kanchu-code-ai/blob/main/LICENSE">MIT License</a>
+  </div>
+  <p class="footer-quechua">"manan-kanchu" — Quechua for "there isn't" — what isn't there: authentic human authorship, hidden vulnerability, undetected malice.</p>
+  <p class="footer-copy">&copy; 2026 manan-kanchu contributors. MIT License.</p>
+</footer>
+
+</body>
+</html>

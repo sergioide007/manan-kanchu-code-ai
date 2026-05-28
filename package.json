@@ -1,0 +1,320 @@
+{
+  "name": "manan-kanchu-code-ai",
+  "displayName": "manan-kanchu — AI Code Detector",
+  "description": "Detect AI-generated code, scan vulnerabilities, audit policies, and protect your codebase with multi-provider AI intelligence.",
+  "version": "1.0.0",
+  "publisher": "sergioide007",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#0d1117",
+    "theme": "dark"
+  },
+  "qna": "https://github.com/sergioide007/manan-kanchu-code-ai/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sergioide007/manan-kanchu-code-ai"
+  },
+  "bugs": {
+    "url": "https://github.com/sergioide007/manan-kanchu-code-ai/issues"
+  },
+  "homepage": "https://github.com/sergioide007/manan-kanchu-code-ai#readme",
+  "keywords": [
+    "ai detection",
+    "code audit",
+    "security",
+    "vulnerability",
+    "policy",
+    "llm",
+    "generative ai"
+  ],
+  "categories": [
+    "Other",
+    "Linters",
+    "Testing"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "manan-kanchu.open",
+        "title": "Open manan-kanchu Dashboard",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.scanFile",
+        "title": "Scan Current File",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.scanProject",
+        "title": "Scan Entire Project",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.scanSelection",
+        "title": "Scan Selected Code",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.configureProvider",
+        "title": "Configure AI Provider",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.generateReport",
+        "title": "Generate Audit Report",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.sanitize",
+        "title": "Sanitize Detected Issues",
+        "category": "manan-kanchu"
+      },
+      {
+        "command": "manan-kanchu.showMenu",
+        "title": "Show manan-kanchu Commands",
+        "category": "manan-kanchu"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "manan-kanchu.showMenu",
+        "key": "ctrl+shift+m",
+        "mac": "cmd+shift+m"
+      },
+      {
+        "command": "manan-kanchu.open",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m"
+      },
+      {
+        "command": "manan-kanchu.scanFile",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "manan-kanchu.open"
+        },
+        {
+          "command": "manan-kanchu.scanFile"
+        },
+        {
+          "command": "manan-kanchu.scanProject"
+        },
+        {
+          "command": "manan-kanchu.scanSelection"
+        },
+        {
+          "command": "manan-kanchu.configureProvider"
+        },
+        {
+          "command": "manan-kanchu.generateReport"
+        },
+        {
+          "command": "manan-kanchu.sanitize"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "manan-kanchu.scanFile",
+          "group": "manan-kanchu@1"
+        },
+        {
+          "command": "manan-kanchu.scanSelection",
+          "group": "manan-kanchu@2",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "manan-kanchu AI Code Detector",
+      "properties": {
+        "manan-kanchu.preferredProvider": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "anthropic",
+            "openai",
+            "gemini",
+            "ollama",
+            "lmstudio"
+          ],
+          "default": "auto",
+          "description": "Preferred AI provider. 'auto' selects the first available local provider, then cloud."
+        },
+        "manan-kanchu.anthropic.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "description": "Anthropic model to use."
+        },
+        "manan-kanchu.anthropic.baseUrl": {
+          "type": "string",
+          "default": "https://api.anthropic.com/v1",
+          "description": "Anthropic API base URL."
+        },
+        "manan-kanchu.openai.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "OpenAI model to use."
+        },
+        "manan-kanchu.openai.baseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI API base URL."
+        },
+        "manan-kanchu.gemini.model": {
+          "type": "string",
+          "default": "gemini-1.5-pro",
+          "description": "Google Gemini model to use."
+        },
+        "manan-kanchu.gemini.baseUrl": {
+          "type": "string",
+          "default": "https://generativelanguage.googleapis.com/v1beta",
+          "description": "Gemini API base URL."
+        },
+        "manan-kanchu.ollama.endpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama local server endpoint."
+        },
+        "manan-kanchu.ollama.model": {
+          "type": "string",
+          "default": "codellama",
+          "description": "Ollama model to use."
+        },
+        "manan-kanchu.lmstudio.endpoint": {
+          "type": "string",
+          "default": "http://localhost:1234",
+          "description": "LM Studio local server endpoint."
+        },
+        "manan-kanchu.maxTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Maximum tokens per AI request."
+        },
+        "manan-kanchu.temperature": {
+          "type": "number",
+          "default": 0.1,
+          "description": "AI temperature (lower = more deterministic analysis)."
+        },
+        "manan-kanchu.requestTimeout": {
+          "type": "number",
+          "default": 120000,
+          "description": "AI request timeout in milliseconds."
+        },
+        "manan-kanchu.detection.heuristicWeight": {
+          "type": "number",
+          "default": 0.4,
+          "description": "Weight for heuristic analysis in AI detection score (0-1)."
+        },
+        "manan-kanchu.detection.aiWeight": {
+          "type": "number",
+          "default": 0.6,
+          "description": "Weight for AI analysis in AI detection score (0-1)."
+        },
+        "manan-kanchu.detection.threshold": {
+          "type": "number",
+          "default": 0.65,
+          "description": "Score threshold above which code is flagged as AI-generated (0-1)."
+        },
+        "manan-kanchu.scan.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            "dist",
+            "out",
+            ".git",
+            "*.min.js",
+            "*.min.css"
+          ],
+          "description": "Glob patterns to exclude from project scans."
+        },
+        "manan-kanchu.scan.maxFileSizeKB": {
+          "type": "number",
+          "default": 512,
+          "description": "Maximum file size in KB to include in scans."
+        },
+        "manan-kanchu.policies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "no-hardcoded-secrets",
+            "no-eval",
+            "no-innerHTML",
+            "license-compliance"
+          ],
+          "description": "Active policy rules for evaluation."
+        },
+        "manan-kanchu.privacy.telemetry": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send anonymous usage statistics. Defaults to off (privacy-first)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext ts",
+    "package": "npx @vscode/vsce package",
+    "publish": "npx @vscode/vsce publish",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/vsce": "^2.24.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.3.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src/test"
+    ],
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "moduleNameMapper": {
+      "^vscode$": "<rootDir>/src/test/__mocks__/vscode.ts"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/test/**",
+      "!src/extension.ts",
+      "!src/panel/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 60,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    }
+  }
+}

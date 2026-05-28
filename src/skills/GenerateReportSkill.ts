@@ -1,0 +1,161 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { Skill, SkillContext, SkillResult, AuditReport, ScanSummary, Recommendation } from '../core/interfaces';
+
+export class GenerateReportSkill implements Skill {
+  readonly id = 'generate-report';
+  readonly name = 'Generate Audit Report';
+  readonly description = 'Generate a comprehensive audit report from scan results';
+
+  async execute(context: SkillContext): Promise<SkillResult> {
+    const summary = context.parameters['summary'] as ScanSummary;
+    const format = (context.parameters['format'] as string) ?? 'markdown';
+
+    if (!summary) return { success: false, errors: ['summary is required'] };
+
+    const recommendations = this._buildRecommendations(summary);
+    const content = format === 'json'
+      ? JSON.stringify({ summary, recommendations }, null, 2)
+      : this._buildMarkdown(summary, recommendations);
+
+    const report: AuditReport = {
+      title: `manan-kanchu Audit Report — ${path.basename(summary.projectPath)}`,
+      projectPath: summary.projectPath,
+      generatedAt: new Date().toISOString(),
+      summary,
+      recommendations,
+      format: format as AuditReport['format'],
+      content,
+    };
+
+    // Write report to workspace
+    const reportPath = path.join(summary.projectPath, '.manan-kanchu', `report-${Date.now()}.${format === 'json' ? 'json' : 'md'}`);
+    try {
+      fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+      fs.writeFileSync(reportPath, content, 'utf-8');
+    } catch {
+      // non-fatal
+    }
+
+    return { success: true, output: { report, reportPath } };
+  }
+
+  private _buildRecommendations(summary: ScanSummary): Recommendation[] {
+    const recs: Recommendation[] = [];
+
+    if (summary.criticalCount > 0) {
+      recs.push({
+        priority: 1,
+        category: 'vulnerability',
+        title: `Fix ${summary.criticalCount} critical vulnerabilities immediately`,
+        description: 'Critical vulnerabilities represent immediate security risks. Address before any deployment.',
+        effort: 'medium',
+        impact: 'high',
+      });
+    }
+
+    if (summary.aiGeneratedFiles > summary.filesScanned * 0.5) {
+      recs.push({
+        priority: 2,
+        category: 'ai-generated',
+        title: 'High AI code ratio — conduct thorough code review',
+        description: `${summary.aiGeneratedFiles} of ${summary.filesScanned} files appear AI-generated. Review for correctness, edge cases, and domain fitness.`,
+        effort: 'high',
+        impact: 'high',
+      });
+    }
+
+    if (summary.fileResults.some(f => f.findings.some(fi => fi.category === 'malicious'))) {
+      recs.push({
+        priority: 1,
+        category: 'malicious',
+        title: 'Malicious code patterns detected — immediate action required',
+        description: 'Patterns consistent with data exfiltration or keylogging were found. Remove and audit immediately.',
+        effort: 'low',
+        impact: 'high',
+      });
+    }
+
+    if (summary.highCount > 5) {
+      recs.push({
+        priority: 3,
+        category: 'vulnerability',
+        title: `Address ${summary.highCount} high-severity findings`,
+        description: 'High severity issues should be resolved in the next sprint.',
+        effort: 'medium',
+        impact: 'medium',
+      });
+    }
+
+    return recs;
+  }
+
+  private _buildMarkdown(summary: ScanSummary, recs: Recommendation[]): string {
+    const aiPct = (summary.averageAiScore * 100).toFixed(1);
+    const dur = (summary.scanDurationMs / 1000).toFixed(1);
+
+    return `# manan-kanchu Audit Report
+
+**Project:** ${summary.projectPath}
+**Generated:** ${new Date().toLocaleString()}
+**Scan Duration:** ${dur}s
+
+---
+
+## Executive Summary
+
+| Metric | Value |
+|--------|-------|
+| Files Scanned | ${summary.filesScanned} |
+| Files Skipped | ${summary.filesSkipped} |
+| Total Findings | ${summary.totalFindings} |
+| Critical | 🔴 ${summary.criticalCount} |
+| High | 🟠 ${summary.highCount} |
+| Medium | 🟡 ${summary.mediumCount} |
+| Low | 🟢 ${summary.lowCount} |
+| AI-Generated Files | ${summary.aiGeneratedFiles} (${aiPct}% avg score) |
+
+---
+
+## Recommendations
+
+${recs.map((r, i) => `### ${i + 1}. ${r.title}
+
+${r.description}
+
+- **Priority:** ${r.priority}
+- **Effort:** ${r.effort}
+- **Impact:** ${r.impact}
+`).join('\n')}
+
+---
+
+## Top Findings
+
+${summary.topFindings.map(f => `### ${f.severity.toUpperCase()}: ${f.title}
+- **File:** ${f.filePath}:${f.startLine}
+- **Category:** ${f.category}
+- **Confidence:** ${(f.confidence * 100).toFixed(0)}%
+
+\`\`\`
+${f.snippet}
+\`\`\`
+
+${f.recommendation ? `> **Recommendation:** ${f.recommendation}` : ''}
+`).join('\n')}
+
+---
+
+## File Results
+
+| File | Language | LoC | AI Score | Vulns | Policy | Severity |
+|------|----------|-----|----------|-------|--------|----------|
+${summary.fileResults.slice(0, 50).map(r =>
+  `| ${r.filePath} | ${r.language} | ${r.linesOfCode} | ${(r.aiScore * 100).toFixed(0)}% | ${r.vulnerabilities} | ${r.policyViolations} | ${r.severity} |`
+).join('\n')}
+
+---
+*Generated by [manan-kanchu AI Code Detector](https://github.com/sergioide007/manan-kanchu-code-ai) — MIT License*
+`;
+  }
+}

@@ -1,0 +1,16 @@
+src/**
+node_modules/**
+out/test/**
+.vscode/**
+.github/**
+*.vsix
+tsconfig.json
+.eslintrc.json
+*.map
+**/*.test.ts
+jest.config.js
+CNAME
+index.html
+media/README.md
+MEDIUM_ARTICLE.md
+.gitignore
