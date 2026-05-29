@@ -6,7 +6,7 @@ import { AIProviderManager } from '../providers/AIProviderManager';
 import { SkillRegistry } from '../skills/SkillRegistry';
 import { MCPManager } from '../mcp/MCPManager';
 import { MananKanchuConfigManager } from '../core/config';
-import { WebviewMessage, ScanSummary, FileScanResult, CodeFinding, ShellAnalysis } from '../core/interfaces';
+import { WebviewMessage, ScanSummary, FileScanResult, CodeFinding, ShellAnalysis, ProviderType } from '../core/interfaces';
 import { ShellAnalyzer } from '../analyzers/ShellAnalyzer';
 
 export class MainPanel {
@@ -262,10 +262,12 @@ export class MainPanel {
         ignoreFocusOut: true,
       });
       if (!key) return;
-      await this.aiManager.refreshProvider(provider.id as never, key);
+      await this.aiManager.refreshProvider(provider.id as ProviderType, key);
       vscode.window.showInformationMessage(`Provider configured: ${provider.label}`);
     } else {
       await this.config.updateSetting('preferredProvider', provider.id);
+      await this.aiManager.reselect();
+      vscode.window.showInformationMessage(`Provider configured: ${provider.label}`);
     }
 
     this._sendProviderInfo();

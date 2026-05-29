@@ -112,6 +112,10 @@ export class AIProviderManager {
     this.active = await this.selectProvider();
   }
 
+  async reselect(): Promise<void> {
+    this.active = await this.selectProvider();
+  }
+
   getActiveInfo(): { name: string; model: string; type: string } | null {
     if (!this.active) return null;
     return { name: this.active.name, model: this.active.modelName, type: this.active.type };
