@@ -1,5 +1,5 @@
 import { CodeFinding, SeverityLevel } from '../core/interfaces';
-import { uuid } from './utils';
+import { uuid, isInsideStringLiteral } from './utils';
 
 interface MaliciousPattern {
   id: string;
@@ -123,10 +123,10 @@ const MALICIOUS_PATTERNS: MaliciousPattern[] = [
     recommendation: 'Disclose to users via privacy policy. May violate GDPR without consent.',
     category: 'tracking',
   },
-  // Invisible iframe
+  // Invisible iframe — requires an actual <iframe> tag to avoid matching CSS/progress-bar divs
   {
     id: 'IFRAME-001', title: 'Invisible Iframe Injection',
-    pattern: /(?:width\s*[:=]\s*['"`]?0['"`]?|height\s*[:=]\s*['"`]?0['"`]?|display\s*:\s*none)[^;]*src\s*=/gi,
+    pattern: /<iframe\b(?=[^>]*\bsrc\s*=\s*['"][^'"]{1,}['"])(?=[^>]*(?:(?:width|height)\s*=\s*["']?0["']?|style\s*=\s*["'][^"']*(?:width\s*:\s*0|height\s*:\s*0|display\s*:\s*none)))[^>]*/gi,
     severity: 'high',
     description: 'Hidden iframe with external source — can load malicious content.',
     recommendation: 'Remove invisible iframes pointing to external sources.',
@@ -144,6 +144,7 @@ export class MaliciousCodeScanner {
       let match: RegExpExecArray | null;
 
       while ((match = pattern.exec(code)) !== null) {
+        if (isInsideStringLiteral(code, match.index)) continue;
         const lineIndex = code.substring(0, match.index).split('\n').length;
         const snippet = lines[lineIndex - 1]?.trim() ?? match[0].trim();
 

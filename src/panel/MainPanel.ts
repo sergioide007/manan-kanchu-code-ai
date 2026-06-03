@@ -221,7 +221,10 @@ export class MainPanel {
 
     const ai = this.aiManager.getActive()!;
     const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
-    const fileCode = code ?? '';
+    let fileCode = code ?? '';
+    if (!fileCode && finding.filePath) {
+      try { fileCode = fs.readFileSync(finding.filePath, 'utf-8'); } catch { /* keep empty */ }
+    }
 
     const result = await this.skillRegistry.execute('sanitize-code', {
       ai,
@@ -353,6 +356,14 @@ export class MainPanel {
       } catch { /* fallback to full file */ }
     }
     await this._handleScanFile(filePath, code);
+  }
+
+  public triggerScanFile(filePath?: string, code?: string): void {
+    this._handleScanFile(filePath, code);
+  }
+
+  public triggerScanProject(): void {
+    this._handleScanProject();
   }
 
   refreshProviders(): void {
@@ -753,8 +764,13 @@ ${this._body()}
       <div class="tab-panel active" id="tab-dashboard">
         <div id="dashboardEmpty" class="empty-state">
           <div class="empty-icon">🔍</div>
-          <div class="empty-title">Ready to Analyze</div>
-          <div class="empty-desc">Scan your project to detect AI-generated code, vulnerabilities, malicious patterns, and policy violations.</div>
+          <div class="empty-title">manan-kanchu — AI Code Detector</div>
+          <div class="empty-desc">7-signal hybrid analysis with explainable scores. Not a black-box number — every flag comes with evidence you can verify.</div>
+          <div style="display:flex;gap:24px;justify-content:center;margin:4px 0 8px;font-size:12px;color:var(--fg1);">
+            <span>🤖 AI authorship detection</span>
+            <span>🛡️ OWASP scanning</span>
+            <span>🔒 100% offline via Ollama</span>
+          </div>
           <button class="scan-btn primary" style="width:200px;" id="btnDashboardStartScan">🔎 Start Project Scan</button>
         </div>
         <div id="dashboardResults" style="display:none;">
@@ -889,9 +905,12 @@ ${this._body()}
             </div>
           </div>
           <div style="font-size:12px;color:var(--fg1);line-height:1.7;">
-            <p><strong style="color:var(--fg0);">manan-kanchu</strong> (mah-nan-KAHN-chu) is a Quechua word meaning <em>"there isn't"</em> or <em>"no hay"</em> — representing the goal of detecting what doesn't belong: AI-generated code masquerading as human work.</p>
+            <p><strong style="color:var(--fg0);">manan-kanchu</strong> (mah-nan-KAHN-chu) is Quechua for <em>"there isn't"</em> — detecting what doesn't belong: AI-generated code masquerading as human work.</p>
             <br>
-            <p>Supports: Anthropic Claude, OpenAI GPT, Google Gemini, Ollama, LM Studio. Privacy-first — prefers local models.</p>
+            <p style="color:var(--fg0);font-weight:600;margin-bottom:4px;">What makes it different:</p>
+            <p>• <strong style="color:var(--fg0);">Explainable scores</strong> — 7 independent signals (entropy, comment patterns, structural uniformity, identifier vocabulary) combined with AI semantic analysis. Every flag shows why, not just a number.</p>
+            <p style="margin-top:4px;">• <strong style="color:var(--fg0);">100% offline</strong> — Ollama and LM Studio keep your code on-device. No manan-kanchu servers, ever.</p>
+            <p style="margin-top:4px;">• <strong style="color:var(--fg0);">One panel</strong> — AI authorship detection, OWASP vulnerability scanning, malicious code detection, policy compliance, and shell command analysis in a single workflow.</p>
           </div>
         </div>
       </div>
@@ -1167,7 +1186,7 @@ ${this._body()}
         '</div>'
       ).join('');
       evidenceHtml =
-        '<div class="evidence-panel" id="ev-' + f.id + '" style="display:none;">' +
+        '<div class="evidence-panel" id="ev-' + f.id + '">' +
           '<div class="evidence-title">🔬 AI Detection Evidence</div>' +
           (f.aiReason ? '<div class="evidence-reason">' + esc(f.aiReason) + '</div>' : '') +
           '<div class="indicators-list" style="margin-bottom:0;">' + rows + '</div>' +
@@ -1427,7 +1446,7 @@ ${this._body()}
         '<div class="detail-info">' +
           '<div class="detail-title">' + esc(r.filePath.split('/').pop() || r.filePath) + '</div>' +
           '<div class="detail-path">' + esc(r.filePath) + '</div>' +
-          '<div style="margin-top:4px;">' + '<span class="badge ' + r.language.toLowerCase() + '">' + r.language + '</span></div>' +
+          '<div style="margin-top:4px;">' + '<span class="badge ' + esc(r.language.toLowerCase()) + '">' + esc(r.language) + '</span></div>' +
         '</div>' +
       '</div>' +
       '<div class="metrics-row">' +

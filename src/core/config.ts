@@ -36,7 +36,7 @@ export class MananKanchuConfigManager {
 
   get excludePatterns(): string[] {
     return this.cfg.get<string[]>('scan.excludePatterns', [
-      'node_modules', 'dist', 'out', '.git', '*.min.js', '*.min.css'
+      'node_modules', 'dist', 'out', '.git', 'coverage', 'lcov-report', 'build', '.next', '*.min.js', '*.min.css'
     ]);
   }
 

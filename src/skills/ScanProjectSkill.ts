@@ -19,7 +19,11 @@ const SCANNABLE_EXTENSIONS = new Set([
 // Files with no extension that should be scanned
 const SCANNABLE_BASENAMES = new Set(['Dockerfile', 'Makefile', 'Jenkinsfile']);
 
-const DEFAULT_EXCLUDE = ['node_modules', '.git', 'dist', 'out', 'coverage', 'build', '.next'];
+// Always excluded regardless of user config — generated/vendor/test-output dirs contain
+// non-source content that would produce mass false positives in the security scanners.
+const MANDATORY_EXCLUDE = new Set(['node_modules', '.git', 'coverage', 'lcov-report', 'build', 'dist', 'out', '.next']);
+
+const DEFAULT_EXCLUDE = [...MANDATORY_EXCLUDE];
 
 export class ScanProjectSkill implements Skill {
   readonly id = 'scan-project';
@@ -30,7 +34,9 @@ export class ScanProjectSkill implements Skill {
     const startedAt = new Date().toISOString();
     const start = Date.now();
     const workspaceRoot = context.workspace;
-    const excludePatterns = context.config?.excludePatterns ?? DEFAULT_EXCLUDE;
+    // Merge user config with mandatory excludes so coverage/lcov-report/etc. can never be scanned
+    const userExcludes = context.config?.excludePatterns ?? DEFAULT_EXCLUDE;
+    const excludePatterns = [...new Set([...MANDATORY_EXCLUDE, ...userExcludes])];
     const maxSizeKB = (context.config?.maxFileSizeKB ?? 512) * 1024;
 
     const files = this._collectFiles(workspaceRoot, excludePatterns, maxSizeKB);

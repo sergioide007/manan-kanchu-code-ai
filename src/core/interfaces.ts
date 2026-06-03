@@ -59,11 +59,15 @@ export interface CodeFinding {
   aiReason?: string;
 }
 
+export type AIDetectionTier = 'clean' | 'uncertain' | 'detected';
+
 export interface AIDetectionResult {
   filePath: string;
-  aiScore: number;           // 0-1, probability of AI generation
+  aiScore: number;                       // 0-1, calibrated probability
   heuristicScore: number;
   aiAnalysisScore: number;
+  confidenceInterval: [number, number];  // 80% CI around aiScore
+  tier: AIDetectionTier;                 // clean <0.45 | uncertain 0.45-0.72 | detected >0.72
   findings: CodeFinding[];
   indicators: AIIndicator[];
   linesTotal: number;
@@ -73,7 +77,16 @@ export interface AIDetectionResult {
 }
 
 export interface AIIndicator {
-  type: 'comment-density' | 'naming-pattern' | 'boilerplate' | 'structure-uniformity' | 'signature-match';
+  type:
+    | 'comment-density'
+    | 'comment-patterns'
+    | 'naming-pattern'
+    | 'boilerplate'
+    | 'structure-uniformity'
+    | 'signature-match'
+    | 'entropy-burstiness'
+    | 'line-length-uniformity'
+    | 'generic-identifiers';
   description: string;
   weight: number;
   score: number;
@@ -243,7 +256,10 @@ export type WebviewMessageType =
   | 'update-threshold'
   | 'list-workspace-files'
   | 'get-file-preview'
-  | 'scan-region';
+  | 'scan-region'
+  | 'get-file-scan-preview'
+  | 'get-selection-scan-preview'
+  | 'add-custom-policy';
 
 export interface WebviewMessage {
   type: WebviewMessageType;

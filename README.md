@@ -9,7 +9,7 @@
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)](./LICENSE)
 
 <!-- Replace with actual GIF once recorded: media/dashboard-overview.gif (800×500) -->
-<!-- ![manan-kanchu Dashboard — 6 tabs: Dashboard, Findings, Files, Shell, Policies, Settings](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/dashboard-overview.gif) -->
+![manan-kanchu Dashboard — 6 tabs: Dashboard, Findings, Files, Script, Policies, Settings](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/dashboard-overview.gif)
 
 ---
 
@@ -28,7 +28,7 @@ It provides a comprehensive security and code-quality dashboard directly inside 
 ### 1. AI Code Detection
 
 <!-- Replace: media/scan-file.gif -->
-<!-- ![Scanning a file — AI detection score, heuristic indicators](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-file.gif) -->
+![Scanning a file — AI detection score, heuristic indicators](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-project.gif)
 
 Hybrid scoring combines **heuristic analysis (40%)** and **AI semantic analysis (60%)** to produce a 0–100% confidence score per file. Indicators include:
 

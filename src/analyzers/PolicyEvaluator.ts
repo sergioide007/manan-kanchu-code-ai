@@ -1,5 +1,5 @@
 import { PolicyEvaluationResult, PolicyRule, PolicyViolation } from '../core/interfaces';
-import { uuid } from './utils';
+import { uuid, isInsideStringLiteral } from './utils';
 
 const BUILT_IN_RULES: PolicyRule[] = [
   {
@@ -39,6 +39,11 @@ const BUILT_IN_RULES: PolicyRule[] = [
       const extensions = ['.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.cs', '.go', '.rs'];
       const hasExt = extensions.some(e => filePath.endsWith(e));
       if (!hasExt) return [];
+      // Skip generated/vendor and test infrastructure — these are not project source files
+      const GENERATED_DIRS = ['coverage', 'lcov-report', 'node_modules', 'dist', 'build', '.next', 'out', 'vendor', '__mocks__', '__tests__'];
+      const pathSegments = filePath.replace(/\\/g, '/').split('/');
+      if (GENERATED_DIRS.some(d => pathSegments.includes(d))) return [];
+      if (/\.(test|spec)\.(ts|js|tsx|jsx)$/.test(filePath)) return [];
       const header = code.substring(0, 500);
       const hasLicense = /(?:MIT|Apache|GPL|BSD|LGPL|MPL|ISC|copyright|SPDX-License-Identifier)/i.test(header);
       if (hasLicense) return [];
@@ -58,7 +63,8 @@ const BUILT_IN_RULES: PolicyRule[] = [
     name: 'No HTTP for External URLs',
     description: 'External URLs must use HTTPS, not HTTP.',
     severity: 'medium',
-    pattern: /['"`]http:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0)[^'"`]+['"`]/g,
+    // Excludes XML/SVG namespace URIs (www.w3.org, schemas.) which are identifiers, not endpoints
+    pattern: /['"`]http:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0|www\.w3\.org|schemas?\.|xml\.)[^'"`]+['"`]/g,
   },
   {
     id: 'no-any-typescript',
@@ -145,6 +151,8 @@ export class PolicyEvaluator {
         const p = new RegExp(rule.pattern.source, rule.pattern.flags);
         let match: RegExpExecArray | null;
         while ((match = p.exec(code)) !== null) {
+          if (isInsideStringLiteral(code, match.index)) continue;
+
           const lineIndex = code.substring(0, match.index).split('\n').length;
           ruleViolations.push({
             ruleId: rule.id,

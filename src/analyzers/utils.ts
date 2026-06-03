@@ -1,5 +1,24 @@
 let _counter = 0;
 
+/**
+ * Returns true if the position `matchIndex` in `code` falls inside a single or
+ * double-quoted string literal on the same line. Used by scanners to suppress
+ * false positives when a pattern keyword appears in a string value (e.g. a rule
+ * description that mentions the very pattern being scanned).
+ */
+export function isInsideStringLiteral(code: string, matchIndex: number): boolean {
+  const lastNewline = code.lastIndexOf('\n', matchIndex - 1);
+  const lineUpToMatch = code.substring(lastNewline + 1, matchIndex);
+  let single = 0, double = 0, backtick = 0;
+  for (let i = 0; i < lineUpToMatch.length; i++) {
+    if (lineUpToMatch[i] === '\\') { i++; continue; }
+    if (lineUpToMatch[i] === "'") single++;
+    if (lineUpToMatch[i] === '"') double++;
+    if (lineUpToMatch[i] === '`') backtick++;
+  }
+  return (single % 2 === 1) || (double % 2 === 1) || (backtick % 2 === 1);
+}
+
 export function uuid(): string {
   _counter++;
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${_counter}`;

@@ -61,15 +61,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     vscode.commands.registerCommand('manan-kanchu.scanFile', async () => {
+      const editor = vscode.window.activeTextEditor;
+      const filePath = editor?.document.fileName;
+      const code = editor?.document.getText();
+      if (!filePath) {
+        vscode.window.showWarningMessage('No active editor found. Open a file first.');
+        return;
+      }
       MainPanel.show(context, aiManager, skillRegistry, mcpManager, config);
       await waitForPanel();
-      MainPanel.current?.['_panel']?.webview?.postMessage({ type: 'scan-file' });
+      MainPanel.current?.triggerScanFile(filePath, code);
     }),
 
     vscode.commands.registerCommand('manan-kanchu.scanProject', async () => {
       MainPanel.show(context, aiManager, skillRegistry, mcpManager, config);
       await waitForPanel();
-      MainPanel.current?.['_panel']?.webview?.postMessage({ type: 'scan-project' });
+      MainPanel.current?.triggerScanProject();
     }),
 
     vscode.commands.registerCommand('manan-kanchu.scanSelection', async () => {
@@ -78,11 +85,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.window.showWarningMessage('Select code to scan first');
         return;
       }
-      MainPanel.show(context, aiManager, skillRegistry, mcpManager, config);
-      await waitForPanel();
       const code = editor.document.getText(editor.selection);
       const filePath = editor.document.fileName;
-      MainPanel.current?.['_panel']?.webview?.postMessage({ type: 'scan-selection', code, filePath });
+      MainPanel.show(context, aiManager, skillRegistry, mcpManager, config);
+      await waitForPanel();
+      MainPanel.current?.triggerScanFile(filePath, code);
     }),
 
     vscode.commands.registerCommand('manan-kanchu.configureProvider', async () => {
