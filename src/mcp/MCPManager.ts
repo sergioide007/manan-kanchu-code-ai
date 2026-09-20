@@ -17,6 +17,10 @@ export class MCPManager implements MCPExecutor {
     return tool.execute(params);
   }
 
+  hasTool(serverId: string, toolName: string): boolean {
+    return !!this.servers.get(serverId)?.tools.some(t => t.name === toolName);
+  }
+
   getServers(): MCPServer[] {
     return [...this.servers.values()];
   }

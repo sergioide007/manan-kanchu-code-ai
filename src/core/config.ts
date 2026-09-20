@@ -63,7 +63,7 @@ export class MananKanchuConfigManager {
   }
 
   get openaiModel(): string {
-    return this.cfg.get<string>('openai.model', 'gpt-4o');
+    return this.cfg.get<string>('openai.model', 'gpt-6-astra');
   }
 
   get openaiBaseUrl(): string {
@@ -71,7 +71,7 @@ export class MananKanchuConfigManager {
   }
 
   get geminiModel(): string {
-    return this.cfg.get<string>('gemini.model', 'gemini-1.5-pro');
+    return this.cfg.get<string>('gemini.model', 'gemini-3.1-flash-lite');
   }
 
   get geminiBaseUrl(): string {

@@ -11,14 +11,14 @@ interface ShellPattern {
 const SHELL_PATTERNS: ShellPattern[] = [
   {
     type: 'destructive',
-    pattern: /\brm\s+-[a-z]*f[a-z]*\s+[/~$]/i,
+    pattern: /\brm\s+(?:-{1,2}[a-z-]+\s+)*?(?:-[a-z]*f[a-z]*|--force)\s+(?:-{1,2}[a-z-]+\s+)*[/~$]/i,
     severity: 'critical',
     description: 'rm -rf on root/home paths can destroy the filesystem.',
     suggestion: 'Specify exact paths and test with --dry-run first.',
   },
   {
     type: 'destructive',
-    pattern: /\bdd\s+if=\/dev\/zero|if=\/dev\/random/i,
+    pattern: /\bdd\s+[^|;&\n]*\bif=\/dev\/(?:zero|u?random)\b/i,
     severity: 'critical',
     description: 'dd with zero/random input can overwrite entire disks.',
     suggestion: 'Use with extreme caution. Specify exact byte count.',
@@ -46,9 +46,9 @@ const SHELL_PATTERNS: ShellPattern[] = [
   },
   {
     type: 'privilege-escalation',
-    pattern: /chmod\s+[0-9]*7[0-9][0-9]\s+/,
+    pattern: /\bchmod\s+(?:-[a-zA-Z]+\s+)*(?:[0-7]?[0-7]{2}[2367](?![0-7])|(?:[ao]+\+[rxXst]*w[rwxXst]*|a\+rwx))(?=\s|$)/,
     severity: 'high',
-    description: 'chmod 777 grants world-writable permissions — security risk.',
+    description: 'World-writable permissions (e.g. chmod 777) let any user modify the file — security risk.',
     suggestion: 'Use minimum required permissions: chmod 755 for executables, 644 for files.',
   },
   {

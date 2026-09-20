@@ -1,0 +1,13 @@
+flowchart LR
+    IN["Input<br/>file · selection · project"] --> CORE{{"Skills<br/>scan-file · scan-project"}}
+    CORE --> A1["AI Code Detector"]
+    CORE --> A2["Vulnerability Scanner<br/>91 patterns"]
+    CORE --> A3["Malicious Code Scanner<br/>7 categories"]
+    CORE --> A4["Policy Evaluator<br/>14 built-in rules"]
+    SH["Shell command"] --> A5["Shell Analyzer<br/>12 patterns"]
+    A1 & A2 & A3 & A4 & A5 --> DASH["Dashboard · 6 tabs"]
+    DASH --> REP["Markdown report<br/>.manan-kanchu/report-timestamp.md"]
+    DASH --> FIX["Auto-fix<br/>AI-suggested · applied on click"]
+    PROV[("AI provider<br/>optional")] -.-> A1
+    PROV -.-> A5
+    PROV -.-> FIX

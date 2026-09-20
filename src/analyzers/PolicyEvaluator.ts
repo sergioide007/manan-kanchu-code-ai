@@ -1,5 +1,5 @@
 import { PolicyEvaluationResult, PolicyRule, PolicyViolation } from '../core/interfaces';
-import { uuid, isInsideStringLiteral } from './utils';
+import { isInsideStringLiteral } from './utils';
 
 const BUILT_IN_RULES: PolicyRule[] = [
   {
@@ -117,11 +117,32 @@ const BUILT_IN_RULES: PolicyRule[] = [
     pattern: /\bfs\.(readFileSync|writeFileSync|readdirSync|statSync|existsSync|unlinkSync|mkdirSync)\b/g,
   },
   {
+    id: 'no-debugger',
+    name: 'No Debugger Statements',
+    description: 'debugger statements and breakpoint() calls must not be committed.',
+    severity: 'medium',
+    pattern: /^[ \t]*(?:debugger\b[ \t]*;?|breakpoint\s*\(\s*\)|(?:import\s+pdb;\s*)?pdb\.set_trace\s*\(\s*\))/gm,
+  },
+  {
+    id: 'no-todo-comments',
+    name: 'No Unresolved TODO/FIXME Comments',
+    description: 'TODO and FIXME comments must be resolved or tracked in an issue before merging.',
+    severity: 'low',
+    pattern: /(?:\/\/|\/\*+|#)[^\n]*\b(?:TODO|FIXME)\b/g,
+  },
+  {
+    id: 'no-sql-injection',
+    name: 'Parameterized Queries Required',
+    description: 'SQL built by string concatenation or interpolation is injectable — use parameterized queries.',
+    severity: 'critical',
+    pattern: /\b(?:query|execute|executeQuery|executeUpdate|exec|raw|prepareStatement)\s*\(\s*(?:"[^"\n]*\b(?:SELECT|INSERT|UPDATE|DELETE)\b[^"\n]*"\s*\+|'[^'\n]*\b(?:SELECT|INSERT|UPDATE|DELETE)\b[^'\n]*'\s*\+|`[^`\n]*\b(?:SELECT|INSERT|UPDATE|DELETE)\b[^`\n]*\$\{|f["'][^"'\n]*\b(?:SELECT|INSERT|UPDATE|DELETE)\b[^"'\n]*\{)/gi,
+  },
+  {
     id: 'no-weak-crypto',
     name: 'No Weak Cryptography',
     description: 'MD5 and SHA1 are cryptographically broken.',
     severity: 'high',
-    pattern: /(?:createHash|hashlib\.new|MessageDigest\.getInstance)\s*\(\s*['"`](?:md5|sha1|sha-1)['"`]/gi,
+    pattern: /(?:(?:createHash|hashlib\.new|MessageDigest\.getInstance)\s*\(\s*['"`](?:md5|sha1|sha-1)['"`]|\bhashlib\.(?:md5|sha1)\s*\()/gi,
   },
 ];
 

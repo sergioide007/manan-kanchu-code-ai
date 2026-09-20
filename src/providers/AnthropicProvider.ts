@@ -30,20 +30,34 @@ export class AnthropicProvider implements AIProvider {
     const body: Record<string, unknown> = {
       model: this.modelName,
       max_tokens: options.maxTokens ?? 4096,
+      // Forward the requested temperature; omitting it makes the API fall back to 1.0,
+      // which made detection scores non-deterministic despite temperature: 0.
+      temperature: options.temperature ?? 0.1,
       messages: filtered,
     };
     if (system) body['system'] = system;
 
-    const resp = await fetch(`${this.baseUrl}/messages`, {
+    const send = (payload: Record<string, unknown>) => fetch(`${this.baseUrl}/messages`, {
       method: 'POST',
       headers: {
         'x-api-key': this.apiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeout),
     });
+
+    let resp = await send(body);
+
+    // Some newer models reject an explicit temperature; retry once without it.
+    if (resp.status === 400) {
+      const detail = await resp.text();
+      if (!/temperature/i.test(detail)) throw new Error(`Anthropic 400: ${detail}`);
+      const withoutTemperature = { ...body };
+      delete withoutTemperature['temperature'];
+      resp = await send(withoutTemperature);
+    }
 
     if (!resp.ok) {
       const err = await resp.text();

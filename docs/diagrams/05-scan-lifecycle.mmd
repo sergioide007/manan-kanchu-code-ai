@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor U as Developer
+    participant E as extension.ts
+    participant H as PanelMessageHandler
+    participant R as SkillRegistry
+    participant S as ScanFileSkill
+    participant D as AICodeDetector
+    participant AI as Active AI provider
+    participant W as Webview
+
+    U->>E: Ctrl+Alt+S (Scan Current File)
+    E->>H: show panel, then scanFile(path, code)
+    H->>W: scan-started
+    H->>R: execute scan-file
+    R->>S: execute(context)
+    par AI detection
+        S->>D: analyzeCode()
+        D->>D: 7 heuristic signals
+        opt a provider is available
+            D->>AI: complete(prompt, temperature 0)
+            AI-->>D: score + reason
+        end
+    and Vulnerability scan
+        S->>S: VulnerabilityScanner
+    end
+    S->>S: MaliciousCodeScanner + PolicyEvaluator
+    S-->>R: FileScanResult
+    R-->>H: SkillResult
+    H->>W: scan-file-result
+    W-->>U: Findings tab with AI score and evidence

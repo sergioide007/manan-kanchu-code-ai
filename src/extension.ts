@@ -24,8 +24,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const secrets = new SecretManager(context.secrets);
 
   aiManager = new AIProviderManager(config, secrets);
-  skillRegistry = new SkillRegistry(config.toConfig());
   mcpManager = new MCPManager();
+  skillRegistry = new SkillRegistry(config.toConfig(), mcpManager);
 
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
   if (workspaceRoot) {
@@ -105,7 +105,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     vscode.commands.registerCommand('manan-kanchu.sanitize', async () => {
-      vscode.window.showInformationMessage('Open manan-kanchu Dashboard and scan a file to see auto-fix options.');
+      const choice = await vscode.window.showInformationMessage(
+        'Scan a file or project, then use "Sanitize" on any finding in the dashboard to get an AI-suggested fix.',
+        'Open Dashboard'
+      );
+      if (choice === 'Open Dashboard') {
+        await vscode.commands.executeCommand('manan-kanchu.open');
+      }
     }),
 
     output

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MCPServer, MCPTool } from '../core/interfaces';
+import { resolveInside } from '../core/pathUtils';
 
 export class FilesystemMCP implements MCPServer {
   readonly id = 'filesystem';
@@ -13,7 +14,7 @@ export class FilesystemMCP implements MCPServer {
         name: 'read_file',
         description: 'Read contents of a file',
         execute: async (params) => {
-          const filePath = path.resolve(this.workspaceRoot, params['path'] as string);
+          const filePath = resolveInside(this.workspaceRoot, params['path'] as string);
           return fs.readFileSync(filePath, 'utf-8');
         },
       },
@@ -21,7 +22,7 @@ export class FilesystemMCP implements MCPServer {
         name: 'write_file',
         description: 'Write content to a file',
         execute: async (params) => {
-          const filePath = path.resolve(this.workspaceRoot, params['path'] as string);
+          const filePath = resolveInside(this.workspaceRoot, params['path'] as string);
           fs.mkdirSync(path.dirname(filePath), { recursive: true });
           fs.writeFileSync(filePath, params['content'] as string, 'utf-8');
           return { success: true };
@@ -31,7 +32,7 @@ export class FilesystemMCP implements MCPServer {
         name: 'list_files',
         description: 'List files in a directory recursively',
         execute: async (params) => {
-          const dir = path.resolve(this.workspaceRoot, (params['path'] as string) ?? '.');
+          const dir = resolveInside(this.workspaceRoot, (params['path'] as string) ?? '.');
           const maxDepth = (params['maxDepth'] as number) ?? 5;
           return this._walk(dir, maxDepth, 0);
         },
@@ -40,7 +41,7 @@ export class FilesystemMCP implements MCPServer {
         name: 'file_exists',
         description: 'Check if a file or directory exists',
         execute: async (params) => {
-          const filePath = path.resolve(this.workspaceRoot, params['path'] as string);
+          const filePath = resolveInside(this.workspaceRoot, params['path'] as string);
           return { exists: fs.existsSync(filePath) };
         },
       },

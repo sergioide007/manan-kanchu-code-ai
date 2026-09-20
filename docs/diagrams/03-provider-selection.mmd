@@ -1,0 +1,14 @@
+flowchart TD
+    START(["Scan requested"]) --> PREF{"preferredProvider is a<br/>specific provider and available?"}
+    PREF -->|yes| USE["Use it"]
+    PREF -->|"no, or auto"| O{"Ollama reachable?<br/>localhost:11434"}
+    O -->|yes| USE
+    O -->|no| L{"LM Studio reachable?<br/>localhost:1234"}
+    L -->|yes| USE
+    L -->|no| A{"Anthropic key stored<br/>and API reachable?"}
+    A -->|yes| USE
+    A -->|no| G{"Gemini key stored<br/>and API reachable?"}
+    G -->|yes| USE
+    G -->|no| OA{"OpenAI key stored<br/>and API reachable?"}
+    OA -->|yes| USE
+    OA -->|no| NONE["No provider<br/>heuristic-only detection<br/>auto-fix unavailable"]

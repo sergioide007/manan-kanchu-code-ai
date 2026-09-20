@@ -6,6 +6,8 @@ import { OpenAIProvider } from './OpenAIProvider';
 import { GeminiProvider } from './GeminiProvider';
 import { OllamaProvider } from './OllamaProvider';
 import { LMStudioProvider } from './LMStudioProvider';
+import { ConfiguredProvider } from './ConfiguredProvider';
+import { friendlyModelName } from '../core/modelNames';
 
 const LOCAL_PRIORITY: ProviderType[] = ['ollama', 'lmstudio'];
 const CLOUD_PRIORITY: ProviderType[] = ['anthropic', 'gemini', 'openai'];
@@ -19,33 +21,38 @@ export class AIProviderManager {
     private readonly secrets: SecretManager
   ) {}
 
+  /** Every provider is wrapped so the maxTokens / temperature settings apply to all requests. */
+  private register(type: ProviderType, provider: AIProvider): void {
+    this.providers.set(type, new ConfiguredProvider(provider, this.config));
+  }
+
   async initialize(): Promise<void> {
     const timeout = this.config.requestTimeout;
 
-    this.providers.set('ollama', new OllamaProvider(
+    this.register('ollama', new OllamaProvider(
       this.config.ollamaModel, this.config.ollamaEndpoint, timeout
     ));
-    this.providers.set('lmstudio', new LMStudioProvider(
+    this.register('lmstudio', new LMStudioProvider(
       this.config.lmstudioEndpoint, timeout
     ));
 
     const anthropicKey = await this.secrets.getApiKey('anthropic');
     if (anthropicKey) {
-      this.providers.set('anthropic', new AnthropicProvider(
+      this.register('anthropic', new AnthropicProvider(
         anthropicKey, this.config.anthropicModel, this.config.anthropicBaseUrl, timeout
       ));
     }
 
     const openaiKey = await this.secrets.getApiKey('openai');
     if (openaiKey) {
-      this.providers.set('openai', new OpenAIProvider(
+      this.register('openai', new OpenAIProvider(
         openaiKey, this.config.openaiModel, this.config.openaiBaseUrl, timeout
       ));
     }
 
     const geminiKey = await this.secrets.getApiKey('gemini');
     if (geminiKey) {
-      this.providers.set('gemini', new GeminiProvider(
+      this.register('gemini', new GeminiProvider(
         geminiKey, this.config.geminiModel, this.config.geminiBaseUrl, timeout
       ));
     }
@@ -95,20 +102,28 @@ export class AIProviderManager {
     const timeout = this.config.requestTimeout;
     if (type === 'anthropic' && apiKey) {
       await this.secrets.setApiKey('anthropic', apiKey);
-      this.providers.set('anthropic', new AnthropicProvider(
+      this.register('anthropic', new AnthropicProvider(
         apiKey, this.config.anthropicModel, this.config.anthropicBaseUrl, timeout
       ));
     } else if (type === 'openai' && apiKey) {
       await this.secrets.setApiKey('openai', apiKey);
-      this.providers.set('openai', new OpenAIProvider(
+      this.register('openai', new OpenAIProvider(
         apiKey, this.config.openaiModel, this.config.openaiBaseUrl, timeout
       ));
     } else if (type === 'gemini' && apiKey) {
       await this.secrets.setApiKey('gemini', apiKey);
-      this.providers.set('gemini', new GeminiProvider(
+      this.register('gemini', new GeminiProvider(
         apiKey, this.config.geminiModel, this.config.geminiBaseUrl, timeout
       ));
     }
+    this.active = await this.selectProvider();
+  }
+
+  /** Deletes the stored API key of a cloud provider and drops its instance. */
+  async removeProvider(type: ProviderType): Promise<void> {
+    if (type === 'ollama' || type === 'lmstudio') return; // local providers hold no key
+    await this.secrets.deleteApiKey(type);
+    this.providers.delete(type);
     this.active = await this.selectProvider();
   }
 
@@ -118,6 +133,6 @@ export class AIProviderManager {
 
   getActiveInfo(): { name: string; model: string; type: string } | null {
     if (!this.active) return null;
-    return { name: this.active.name, model: this.active.modelName, type: this.active.type };
+    return { name: this.active.name, model: friendlyModelName(this.active.modelName), type: this.active.type };
   }
 }

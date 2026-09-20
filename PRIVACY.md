@@ -1,7 +1,8 @@
 # Privacy Policy — manan-kanchu AI Code Detector
 
 **Effective date:** 2026-05-26  
-**Extension version:** 1.0.0  
+**Extension version:** 1.0.1  
+**Last updated:** 2026-09-20  
 **Publisher:** sergioide007  
 
 ---
@@ -36,7 +37,15 @@ manan-kanchu supports five AI providers. **Only the provider you configure recei
 
 ### 3.2 Cloud Providers (code sent to third-party APIs)
 
-If you configure a cloud provider, code snippets (truncated to 3 000 characters maximum) are sent to the provider's API for analysis.
+If you configure a cloud provider, only code snippets are sent to the provider's API, and only for the feature you invoke:
+
+| Feature | What is sent |
+|---------|--------------|
+| AI detection score | The first ~1 800 characters of the file |
+| Auto-fix (*Sanitize*) | At most 3 000 characters of code around the finding, plus the flagged snippet (at most 500 characters) and the finding's description |
+| Shell command tips | The command text you typed, only when a risk was found |
+
+The scanners (vulnerabilities, malicious code, policies) run locally and send nothing.
 
 | Provider | Privacy policy |
 |----------|---------------|
@@ -44,7 +53,7 @@ If you configure a cloud provider, code snippets (truncated to 3 000 characters 
 | Google (Gemini) | https://policies.google.com/privacy |
 | OpenAI (GPT) | https://openai.com/policies/privacy-policy |
 
-**Default behaviour:** manan-kanchu selects local providers first (Ollama → LM Studio). Cloud providers are only used if no local provider is available **and** you have entered an API key via the *Configure AI Provider* command.
+**Default behaviour:** with `preferredProvider: auto`, manan-kanchu selects local providers first (Ollama → LM Studio). Cloud providers (Anthropic → Gemini → OpenAI) are only used if no local provider is available **and** you have entered an API key via the *Configure AI Provider* command. If you explicitly choose a cloud provider in the settings, it is used first.
 
 ---
 
@@ -83,6 +92,7 @@ manan-kanchu does not:
 - Sell data to third parties
 - Require account registration
 - Communicate with any server operated by the extension authors
+- Load web fonts, scripts or images from the network in its dashboard (a strict content-security policy blocks it)
 
 ---
 
@@ -91,8 +101,8 @@ manan-kanchu does not:
 Under the General Data Protection Regulation (GDPR):
 
 - **Legal basis:** The extension processes code locally as a tool you install voluntarily (legitimate interest / contract performance). Cloud API calls are initiated by you explicitly.
-- **Data minimisation:** Only the code snippet needed for analysis (max 3 000 chars) is sent to cloud providers when configured.
-- **Right to erasure:** Delete your API keys via the extension or your OS keychain. Delete generated reports from your `.manan-kanchu/` folder. Uninstalling the extension removes all stored keys.
+- **Data minimisation:** Only the snippet needed for the feature you invoke is sent to cloud providers when configured (see section 3.2 for exact limits).
+- **Right to erasure:** Delete your API keys via the extension or your OS keychain. Delete generated reports from your `.manan-kanchu/` folder. Submitting an empty key in *Configure AI Provider* deletes that provider's key from your OS keychain.
 - **Data controller:** When using cloud providers, you are the data controller for your code; the respective provider is a data processor.
 
 ---

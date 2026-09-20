@@ -1,5 +1,5 @@
-import * as fs from 'fs';
 import * as path from 'path';
+import { writeWorkspaceFile } from '../mcp/workspaceFiles';
 import { Skill, SkillContext, SkillResult, AuditReport, ScanSummary, Recommendation } from '../core/interfaces';
 
 export class GenerateReportSkill implements Skill {
@@ -31,10 +31,10 @@ export class GenerateReportSkill implements Skill {
     // Write report to workspace
     const reportPath = path.join(summary.projectPath, '.manan-kanchu', `report-${Date.now()}.${format === 'json' ? 'json' : 'md'}`);
     try {
-      fs.mkdirSync(path.dirname(reportPath), { recursive: true });
-      fs.writeFileSync(reportPath, content, 'utf-8');
-    } catch {
-      // non-fatal
+      await writeWorkspaceFile(context.mcp, summary.projectPath, reportPath, content);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, errors: [`Could not write the report to ${reportPath}: ${message}`] };
     }
 
     return { success: true, output: { report, reportPath } };

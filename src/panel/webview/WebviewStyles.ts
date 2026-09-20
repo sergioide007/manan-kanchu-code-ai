@@ -8,8 +8,8 @@ export function buildStyles(): string {
       --red: #ff4444; --purple: #bc8cff; --teal: #39d353;
       --critical: #ff4444; --high: #f0883e; --medium: #d29922; --low: #3fb950; --info: #58a6ff;
       --border: #30363d; --radius: 8px; --radius-sm: 4px;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Menlo, 'Consolas', 'Liberation Mono', monospace;
       --transition: all 0.15s ease;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }

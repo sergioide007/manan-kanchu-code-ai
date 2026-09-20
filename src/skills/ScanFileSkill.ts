@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { readWorkspaceFile } from '../mcp/workspaceFiles';
 import { Skill, SkillContext, SkillResult, FileScanResult } from '../core/interfaces';
 import { AICodeDetector } from '../analyzers/AICodeDetector';
 import { VulnerabilityScanner } from '../analyzers/VulnerabilityScanner';
@@ -22,7 +23,7 @@ export class ScanFileSkill implements Skill {
     if (!content) {
       const absPath = path.isAbsolute(filePath) ? filePath : path.join(context.workspace, filePath);
       if (!fs.existsSync(absPath)) return { success: false, errors: [`File not found: ${absPath}`] };
-      content = fs.readFileSync(absPath, 'utf-8');
+      content = await readWorkspaceFile(context.mcp, context.workspace, absPath);
     }
 
     const detector = new AICodeDetector(

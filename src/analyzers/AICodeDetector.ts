@@ -132,8 +132,11 @@ export class AICodeDetector {
       }
     }
 
-    const rawScore = this.ai
-      ? heuristicScore * this.heuristicWeight + aiAnalysisScore * this.aiWeight
+    // Normalise the two weights so custom values that don't sum to 1 (e.g. 0.5 / 0.6)
+    // cannot inflate or deflate the score. Falls back to heuristic-only if both are 0.
+    const weightSum = this.heuristicWeight + this.aiWeight;
+    const rawScore = this.ai && weightSum > 0
+      ? (heuristicScore * this.heuristicWeight + aiAnalysisScore * this.aiWeight) / weightSum
       : heuristicScore;
 
     const calibration = this._getLanguageCalibration(filePath);
@@ -388,15 +391,23 @@ ${snippet}
     try {
       const jsonMatch = response.match(/\{[\s\S]*?\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as { score: number; reason?: string };
-        return { score: Math.max(0, Math.min(1, parsed.score)), reason: parsed.reason };
+        const parsed = JSON.parse(jsonMatch[0]) as { score?: unknown; reason?: unknown };
+        const score = typeof parsed.score === 'number' ? parsed.score : parseFloat(String(parsed.score));
+        if (Number.isFinite(score)) {
+          return {
+            score: Math.max(0, Math.min(1, score)),
+            reason: typeof parsed.reason === 'string' ? parsed.reason : undefined,
+          };
+        }
       }
     } catch {
       const numMatch = response.match(/\b(0\.\d+|1\.0|0|1)\b/);
       if (numMatch) return { score: parseFloat(numMatch[1]) };
     }
 
-    return { score: 0.5 };
+    // Unparseable reply: signal failure so the caller falls back to the heuristic score
+    // (and reports 'heuristic-only') instead of injecting an arbitrary 0.5.
+    throw new Error('AI analysis returned an unparseable response');
   }
 
   // ─── Finding Builder ──────────────────────────────────────────────────────
@@ -458,7 +469,7 @@ ${snippet}
 
   private _tokenizeLine(line: string): string[] {
     return line
-      .split(/[\s\(\)\{\}\[\],;:=+\-*/<>!&|.'"\\@]+/)
+      .split(/[\s(){}[\],;:=+\-*/<>!&|.'"\\@]+/)
       .filter(t => t.length >= 2);
   }
 }

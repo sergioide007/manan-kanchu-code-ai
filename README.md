@@ -1,25 +1,61 @@
+<div align="center">
+
 # manan-kanchu — AI Code Detector
 
-> **Detect AI-generated code, scan vulnerabilities, audit security policies, and protect your codebase — all inside VS Code.**
+**Detect AI-generated code, scan for vulnerabilities, audit security policies and protect your codebase — all inside VS Code.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-blue)](https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai)
-[![Version](https://img.shields.io/badge/version-1.0.0-green)](./CHANGELOG.md)
-[![Marketplace](https://img.shields.io/badge/VS%20Marketplace-published-green)](https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai)
-[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.1-green)](CHANGELOG.md)
+[![CI](https://github.com/sergioide007/manan-kanchu-code-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/sergioide007/manan-kanchu-code-ai/actions/workflows/ci.yml)
+[![Telemetry](https://img.shields.io/badge/telemetry-off%20by%20default-brightgreen)](PRIVACY.md)
 
-<!-- Replace with actual GIF once recorded: media/dashboard-overview.gif (800×500) -->
-![manan-kanchu Dashboard — 6 tabs: Dashboard, Findings, Files, Script, Policies, Settings](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/dashboard-overview.gif)
+![manan-kanchu dashboard — Scan summary, severity distribution and top findings](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/dashboard-overview.jpg)
+
+<sub>Screenshots show the real dashboard rendered with sample data from a demo project.
+Prefer motion? See the animated demos: [dashboard](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/dashboard-overview.gif) · [project scan](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-project.gif).</sub>
+
+</div>
+
+---
+
+## Table of contents
+
+- [What is manan-kanchu?](#what-is-manan-kanchu)
+- [How it works](#how-it-works)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Commands & shortcuts](#commands--shortcuts)
+- [AI providers](#ai-providers)
+- [Settings reference](#settings-reference)
+- [Architecture](#architecture)
+- [Privacy & data flow](#privacy--data-flow)
+- [Limitations & responsible use](#limitations--responsible-use)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
 ## What is manan-kanchu?
 
-**manan-kanchu** (mah-nan-KAHN-chu) is a Quechua word meaning *"there isn't"* — representing the goal of detecting what doesn't belong: AI-generated code masquerading as human work.
+**manan-kanchu** (*mah-nan-KAHN-chu*) is a Quechua expression meaning *"there isn't"* — the extension looks for what shouldn't be there: AI-generated code passed off as human work, insecure patterns, and malicious payloads.
 
-It provides a comprehensive security and code-quality dashboard directly inside VS Code, combining heuristic analysis with multi-provider AI intelligence to give you a full picture of your codebase health.
+It combines **heuristic analysis** with optional **multi-provider AI analysis** in a security and code-quality dashboard that lives inside VS Code.
 
-**100% open source · MIT license · Privacy-first** — your code goes directly to your chosen AI provider. No manan-kanchu servers.
+| | |
+|---|---|
+| 🔍 **Detect** | Hybrid AI-authorship scoring per file, with the evidence behind every score |
+| 🛡️ **Scan** | 91 vulnerability patterns (with CWE codes) and 7 categories of malicious code |
+| 📋 **Audit** | 14 built-in policy rules plus your own custom rules |
+| 🔒 **Private** | Open source (MIT). Code goes only to *your* chosen provider — there are no manan-kanchu servers |
+
+---
+
+## How it works
+
+Every scan runs your code through independent engines and consolidates the results in one dashboard, which can be exported as a Markdown report.
+
+![Pipeline: input → skills → analyzers → dashboard → report / auto-fix](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/01-pipeline.png)
 
 ---
 
@@ -27,95 +63,108 @@ It provides a comprehensive security and code-quality dashboard directly inside 
 
 ### 1. AI Code Detection
 
-<!-- Replace: media/scan-file.gif -->
-![Scanning a file — AI detection score, heuristic indicators](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-project.gif)
+![AI detection — score, verdict and the evidence behind it](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-file.jpg)
 
-Hybrid scoring combines **heuristic analysis (40%)** and **AI semantic analysis (60%)** to produce a 0–100% confidence score per file. Indicators include:
+Seven heuristic signals (comment patterns and density, generic identifiers, boilerplate, structural uniformity, entropy, line-length variance) are blended with an AI semantic score. Default weights are **40% heuristic / 60% AI**; they are normalised, so custom values never have to sum to 1.
 
-- Naming convention uniformity, comment density, boilerplate ratios
-- Structural patterns common in LLM-generated code
-- Semantic fluency scoring via the active AI provider
+![How the AI score is computed](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/02-ai-scoring.png)
+
+| Final score | Tier | What you get |
+| --- | --- | --- |
+| below 0.45 | `clean` | no finding |
+| 0.45 – 0.72 | `uncertain` | finding: *human review recommended* |
+| 0.72 and above | `detected` | finding: *AI-generated content* |
+
+Without an AI provider the score is computed from the heuristics alone and reported as `heuristic-only`.
 
 ### 2. Vulnerability Scanner
 
-<!-- Replace: media/vulnerability-finding.gif -->
-<!-- ![Vulnerability finding — SQL injection, critical severity, auto-fix suggestion](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/vulnerability-finding.gif) -->
+![Vulnerability finding with an AI-suggested fix (before / after)](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/vulnerability-finding.jpg)
 
-20+ OWASP-aligned patterns with CWE codes:
+**91 patterns**, reported with CWE codes, across application code, infrastructure and pipelines:
 
-| Category | Examples |
-|---|---|
-| Injection | SQL injection, command injection, LDAP injection |
-| XSS | `innerHTML`, `document.write`, `eval` with user input |
-| Secrets | Hardcoded API keys, AWS/GCP/Azure credentials, private keys |
-| Crypto | MD5/SHA1 usage, weak random, predictable IVs |
-| Path | Path traversal, arbitrary file read/write |
-| Network | Insecure HTTP, open redirects, SSRF patterns |
+| Area | Examples |
+| --- | --- |
+| Injection | SQL, command and code injection (`eval`, `exec`, `Function`), unsafe deserialization (`pickle`, `Marshal`, `ObjectInputStream`) |
+| Web | `innerHTML`, `dangerouslySetInnerHTML`, `document.write`, open redirects, prototype pollution |
+| Secrets | Hardcoded passwords and API keys; **AWS, Google, GitHub, Slack and Azure keys; private-key blocks** |
+| Crypto | MD5/SHA-1, insecure random for tokens, disabled TLS verification |
+| Memory safety | `gets`, `strcpy`, `sprintf`, `scanf %s`, `unsafe` blocks |
+| Infrastructure | Terraform, Dockerfile, Kubernetes manifests |
+| CI/CD | Hardcoded pipeline secrets, `curl \| bash`, risky `pull_request_target` |
+
+Languages: JavaScript/TypeScript, Python, Java, C#, C/C++, PHP, Go, Ruby, Rust, Kotlin, Swift, Scala, Dart and shell.
 
 ### 3. Malicious Code Scanner
 
-Detects code designed to harm or exfiltrate — useful for auditing third-party code and supply-chain risks:
+Seven categories, useful when auditing third-party code and supply-chain risk:
 
-- **Keyloggers** — `keydown`/`keypress` event listeners with suspicious data handling
-- **Data exfiltration** — cookie/localStorage theft, beacon calls, form hijacking
-- **Crypto miners** — WebAssembly or script patterns typical of browser miners
-- **Obfuscation** — base64 decode chains, `eval(atob(...))`, `Function()` constructor abuse
-- **Clipboard hijack** — silent clipboard content replacement
+- **Keyloggers** — key listeners combined with network calls
+- **Data exfiltration** — credential, `localStorage` and cookie theft, hidden iframes
+- **Form hijacking** — submit interception and input harvesting (web skimmers)
+- **Crypto miners** — CoinHive-style libraries, WebAssembly loaded from outside
+- **Clipboard hijacking** — silent replacement of copied content
+- **Obfuscation** — `eval(atob(...))`, long hex-encoded payloads
+- **Tracking** — fingerprinting data sent to a server
 
 ### 4. Policy Evaluator
 
-10 built-in compliance rules evaluated across your project:
+![Policy compliance grid](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/policies.jpg)
 
-| Rule ID | Description |
-|---|---|
-| `no-hardcoded-secrets` | No API keys or passwords in source files |
-| `no-eval` | Dynamic code execution forbidden |
-| `no-innerHTML` | No direct `innerHTML` assignment |
-| `license-compliance` | SPDX license identifiers in source files |
-| `no-weak-crypto` | MD5 and SHA1 forbidden |
-| `gdpr-personal-data-logging` | No PII in log statements |
-| `no-console-log` | Production code must not use `console.log` |
-| `no-debugger` | No `debugger` statements in committed code |
-| `no-todo-comments` | No unresolved TODO/FIXME comments |
-| `no-sql-injection` | Parameterized queries enforced |
+14 built-in rules. Four are active by default (✅); enable the rest with the `manan-kanchu.policies` setting, or add your own rules.
 
-Custom rules can be added via the `manan-kanchu.policies` setting.
+| Rule ID | Description | Default |
+| --- | --- | :---: |
+| `no-hardcoded-secrets` | No API keys or passwords in source files | ✅ |
+| `no-eval` | `eval()` / `new Function()` forbidden | ✅ |
+| `no-innerHTML` | No direct `innerHTML` assignment | ✅ |
+| `license-compliance` | License header or SPDX identifier in source files | ✅ |
+| `no-sql-injection` | SQL built by concatenation/interpolation is flagged | |
+| `no-weak-crypto` | MD5 and SHA-1 forbidden | |
+| `gdpr-personal-data-logging` | No PII in log statements | |
+| `no-console-log` | No `console.*` left in production code | |
+| `no-debugger` | No `debugger`, `breakpoint()` or `pdb.set_trace()` | |
+| `no-todo-comments` | No unresolved `TODO` / `FIXME` comments | |
+| `no-http-external` | External URLs must use HTTPS | |
+| `no-any-typescript` | No TypeScript `any` | |
+| `no-async-without-await` | `async` functions must use `await` | |
+| `no-synchronous-fs` | No `fs.*Sync` calls | |
 
 ### 5. Shell Command Analyzer
 
-<!-- Replace: media/shell-analyzer.gif -->
-<!-- ![Shell analyzer — analyzing rm -rf, showing risk level and safer alternative](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/shell-analyzer.gif) -->
+![Shell analyzer — critical risk with a safer alternative](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/shell-analyzer.jpg)
 
-Paste any shell command and get an instant risk assessment:
+Paste a command and get an instant risk assessment from 12 patterns:
 
-- Destructive commands (`rm -rf`, `truncate`, `dd`)
-- Remote execution (`curl | bash`, `wget | sh`, `eval $(...)`)
-- Privilege escalation (`sudo bash`, `chmod 777`, `setuid`)
-- Safe alternative suggestions for flagged commands
+- **Destructive** — `rm -rf` on root/home paths (also `rm -r -f`, `--force`), `dd` from `/dev/zero` or `/dev/urandom`, writes to raw disks, `truncate`
+- **Remote execution** — `curl | bash`, `wget | sh`
+- **Privilege escalation** — `sudo bash`, world-writable `chmod` (777, 666, `a+w`), `crontab` edits
+- **Exfiltration** — sensitive files sent over the network, reverse SSH tunnels
+
+With an AI provider configured you also get a tailored tip and a safer version of the command.
 
 ### 6. Audit Dashboard
 
-<!-- Replace: media/report-export.gif -->
-<!-- ![Report export — generating Markdown audit report](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/report-export.gif) -->
+![Files tab — per-file AI score, vulnerabilities and policy violations](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/scan-project.jpg)
 
-Dark-theme WebviewPanel with 6 tabs:
+A dark-theme WebviewPanel with 6 tabs:
 
 | Tab | Content |
-|---|---|
+| --- | --- |
 | **Dashboard** | Scan summary, severity charts, top findings |
-| **Findings** | All findings filterable by category and severity |
-| **Files** | Per-file AI scores, sorted by risk, drill-down view |
-| **Shell** | Shell command analyzer with risk examples |
-| **Policies** | Policy pass/fail grid with compliance percentage |
-| **Settings** | Detection threshold, AI provider config, about |
+| **Findings** | Every finding, filterable by category and severity, with *Auto-fix* and *False positive* actions |
+| **Files** | Per-file AI score, vulnerabilities and policy violations, with drill-down |
+| **Shell** | Shell command analyzer |
+| **Policies** | Pass/fail grid and compliance percentage |
+| **Settings** | Detection threshold and AI provider configuration |
 
-Export full audit reports as Markdown to `.manan-kanchu/report-<timestamp>.md`.
+Export the full audit as Markdown to `.manan-kanchu/report-<timestamp>.md`. Add `.manan-kanchu/` to your `.gitignore` so reports are not committed by accident.
 
 ---
 
-## Quick Start
+## Quick start
 
-### Step 1 — Install
+### 1. Install
 
 Search **"manan-kanchu"** in the Extensions panel (`Ctrl+Shift+X`), or run:
 
@@ -123,12 +172,11 @@ Search **"manan-kanchu"** in the Extensions panel (`Ctrl+Shift+X`), or run:
 code --install-extension sergioide007.manan-kanchu-code-ai
 ```
 
-### Step 2 — Configure an AI Provider
+### 2. (Optional) configure an AI provider
 
-<!-- Replace: media/provider-config.gif -->
-<!-- ![Configuring AI provider — selecting Anthropic, entering API key](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/provider-config.gif) -->
+The scanners work without one. To enable AI detection scoring, shell tips and auto-fix, press `Ctrl+Shift+M` → **Configure AI Provider**.
 
-Press `Ctrl+Shift+M` → **Configure AI Provider**:
+![Settings tab — provider configuration](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/provider-config.jpg)
 
 **Local (free, fully private):**
 
@@ -137,178 +185,198 @@ Press `Ctrl+Shift+M` → **Configure AI Provider**:
 ollama pull codellama
 
 # LM Studio — auto-detected at http://localhost:1234
-# Load any GGUF model and start the local server
+# Load any model and start the local server
 ```
 
-**Cloud:**
+**Cloud:** pick Anthropic, Google Gemini or OpenAI and paste your API key. Keys live in the OS keychain through VS Code `SecretStorage` — never in `settings.json`. To remove a stored key, run **Configure AI Provider**, pick the provider and submit an empty key.
 
-Select Anthropic, OpenAI, or Google Gemini → enter your API key.
-Keys are stored in the OS keychain via VS Code SecretStorage — never in plaintext, never in `settings.json`.
+### 3. Open the dashboard and scan
 
-### Step 3 — Open the Dashboard
+| Shortcut (`Cmd` instead of `Ctrl` on macOS) | Action |
+| --- | --- |
+| `Ctrl+Alt+M` | Open the dashboard |
+| `Ctrl+Alt+S` | Scan the current file |
+| `Ctrl+Shift+M` | Quick command menu |
 
-```
-Ctrl+Alt+M   →  Open manan-kanchu Dashboard
-Ctrl+Shift+M →  Quick command menu
-```
-
-### Step 4 — Scan Your Project
-
-Click **Scan Project** in the dashboard sidebar or use:
-- `Ctrl+Alt+S` → Scan current file
-- Right-click any file → **manan-kanchu: Scan Current File**
-- Select code → right-click → **manan-kanchu: Scan Selected Code**
+You can also click **Scan Project** in the dashboard, right-click a file → **Scan Current File**, or select code → right-click → **Scan Selected Code**.
 
 ---
 
-## Commands & Shortcuts
+## Commands & shortcuts
 
 | Command | Shortcut | Description |
-|---|---|---|
+| --- | --- | --- |
 | `manan-kanchu: Open Dashboard` | `Ctrl+Alt+M` | Open the main analysis panel |
-| `manan-kanchu: Show Commands` | `Ctrl+Shift+M` | Quick menu with all commands |
+| `manan-kanchu: Show Commands` | `Ctrl+Shift+M` | Quick menu with the main commands |
 | `manan-kanchu: Scan Current File` | `Ctrl+Alt+S` | Analyze the active editor file |
-| `manan-kanchu: Scan Entire Project` | — | Full project scan with file breakdown |
-| `manan-kanchu: Scan Selected Code` | — | Analyze highlighted code selection |
-| `manan-kanchu: Generate Audit Report` | — | Export Markdown report to workspace |
-| `manan-kanchu: Configure AI Provider` | — | Set provider and API key |
-| `manan-kanchu: Sanitize Detected Issues` | — | Apply AI-suggested auto-fixes |
-
-> `Ctrl+Shift+M` shows the command menu without conflicting with other extensions.
+| `manan-kanchu: Scan Entire Project` | — | Scan every source file in the workspace |
+| `manan-kanchu: Scan Selected Code` | — | Analyze the highlighted selection |
+| `manan-kanchu: Generate Audit Report` | — | Export a Markdown report to the workspace |
+| `manan-kanchu: Configure AI Provider` | — | Pick a provider and store or remove its API key |
+| `manan-kanchu: Sanitize Detected Issues` | — | Points you to the dashboard, where **Auto-fix** on any finding proposes and applies a fix |
 
 ---
 
-## AI Providers
+## AI providers
 
-| Provider | Type | Privacy | Cost |
-|---|---|---|---|
-| Ollama | Local | 100% on-device | Free |
-| LM Studio | Local | 100% on-device | Free |
-| Anthropic Claude | Cloud | Direct API | API pricing |
-| OpenAI GPT | Cloud | Direct API | API pricing |
-| Google Gemini | Cloud | Direct API | API pricing |
+| Provider | Type | Where your code goes | Cost |
+| --- | --- | --- | --- |
+| Ollama | Local | Stays on your machine | Free |
+| LM Studio | Local | Stays on your machine | Free |
+| Anthropic Claude | Cloud | Direct API call with your key | API pricing |
+| Google Gemini | Cloud | Direct API call with your key | API pricing |
+| OpenAI GPT | Cloud | Direct API call with your key | API pricing |
 
-**Auto mode** (default) — tries Ollama → LM Studio → Anthropic → OpenAI → Gemini. First available wins. Local providers are always preferred for privacy.
+### Auto mode (default)
 
-### Recommended Models
+With `manan-kanchu.preferredProvider: auto`, the first provider that is reachable wins, and **local providers always come first**. If you pick a specific provider that is not available, selection falls back to auto.
 
-| Provider | Model | Best for |
-|---|---|---|
-| Anthropic | `claude-sonnet-4-6` | Balanced — default recommendation |
-| OpenAI | `gpt-4o` | General analysis |
-| Ollama | `codellama` | Local code analysis |
+![Provider selection order](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/03-provider-selection.png)
+
+### Default models
+
+| Provider | Setting value | Shown in the dashboard as |
+| --- | --- | --- |
+| Anthropic | `claude-sonnet-4-6` | Claude Sonnet 4.6 |
+| OpenAI | `gpt-6-astra` | GPT-6 Astra |
+| Gemini | `gemini-3.1-flash-lite` | Gemini 3.1 Flash-Lite |
+| Ollama | `codellama` | codellama |
+
+The dashboard shows the active provider with a readable model name (for example **OpenAI · GPT-6 Astra**); unknown model IDs are shown as typed.
+
+**OpenAI reasoning models** (GPT-5 and later, such as `gpt-6-astra`) are handled automatically: the request uses `max_completion_tokens` with extra headroom for hidden reasoning tokens, a low reasoning effort, and no custom temperature. If a compatible server rejects a parameter, the extension retries without it. GPT-6 Astra is a flagship model — for high-volume project scans, pick a smaller model in `manan-kanchu.openai.model` or use a local provider.
+
+Model names change quickly — set the one you prefer in the settings below.
 
 ---
 
-## Settings Reference
+## Settings reference
 
-All settings are configurable in VS Code Settings UI or `settings.json`.
+<details>
+<summary><b>Show all settings</b></summary>
 
 | Setting | Default | Description |
-|---|---|---|
-| `manan-kanchu.preferredProvider` | `auto` | Provider selection strategy |
-| `manan-kanchu.anthropic.model` | `claude-sonnet-4-6` | Anthropic model ID |
-| `manan-kanchu.openai.model` | `gpt-4o` | OpenAI model ID |
-| `manan-kanchu.gemini.model` | `gemini-1.5-pro` | Gemini model ID |
-| `manan-kanchu.ollama.endpoint` | `http://localhost:11434` | Ollama server URL |
-| `manan-kanchu.ollama.model` | `codellama` | Ollama model name |
-| `manan-kanchu.lmstudio.endpoint` | `http://localhost:1234` | LM Studio server URL |
-| `manan-kanchu.detection.threshold` | `0.65` | AI detection threshold (0–1). Higher = stricter |
-| `manan-kanchu.detection.heuristicWeight` | `0.4` | Heuristic contribution to score |
-| `manan-kanchu.detection.aiWeight` | `0.6` | AI analysis contribution to score |
-| `manan-kanchu.scan.excludePatterns` | `node_modules, dist, out, …` | Glob patterns excluded from project scans |
-| `manan-kanchu.scan.maxFileSizeKB` | `512` | Max file size included in scans |
-| `manan-kanchu.policies` | `[no-hardcoded-secrets, …]` | Active policy rule IDs |
-| `manan-kanchu.maxTokens` | `4096` | Max tokens per AI request |
-| `manan-kanchu.temperature` | `0.1` | AI temperature (low = deterministic analysis) |
-| `manan-kanchu.requestTimeout` | `120000` | Request timeout in ms |
-| `manan-kanchu.privacy.telemetry` | `false` | Anonymous usage statistics (off by default) |
+| --- | --- | --- |
+| `manan-kanchu.preferredProvider` | `auto` | `auto`, `anthropic`, `openai`, `gemini`, `ollama` or `lmstudio` |
+| `manan-kanchu.anthropic.model` / `.baseUrl` | `claude-sonnet-4-6` / `https://api.anthropic.com/v1` | Anthropic model and API base URL |
+| `manan-kanchu.openai.model` / `.baseUrl` | `gpt-6-astra` / `https://api.openai.com/v1` | OpenAI model and API base URL. Any OpenAI-compatible server works through `baseUrl` |
+| `manan-kanchu.gemini.model` / `.baseUrl` | `gemini-3.1-flash-lite` / `https://generativelanguage.googleapis.com/v1beta` | Gemini model and API base URL |
+| `manan-kanchu.ollama.endpoint` / `.model` | `http://localhost:11434` / `codellama` | Ollama server and model |
+| `manan-kanchu.lmstudio.endpoint` | `http://localhost:1234` | LM Studio server |
+| `manan-kanchu.detection.threshold` | `0.65` | Files at or above this score count as *AI-generated* in project summaries and reports. Per-file tiers use the fixed 0.45 / 0.72 cut-offs described above |
+| `manan-kanchu.detection.heuristicWeight` | `0.4` | Weight of the heuristic score (normalised against `aiWeight`) |
+| `manan-kanchu.detection.aiWeight` | `0.6` | Weight of the AI semantic score |
+| `manan-kanchu.scan.excludePatterns` | `node_modules, dist, out, .git, *.min.js, *.min.css` | Names/globs skipped in project scans. `node_modules`, `.git`, `coverage`, `build`, `dist`, `out` and `.next` are always skipped |
+| `manan-kanchu.scan.maxFileSizeKB` | `512` | Larger files are skipped |
+| `manan-kanchu.policies` | `no-hardcoded-secrets, no-eval, no-innerHTML, license-compliance` | Active policy rule IDs |
+| `manan-kanchu.requestTimeout` | `120000` | AI request timeout in ms |
+| `manan-kanchu.maxTokens` | `4096` | **Ceiling** on tokens per AI request. Each feature asks for what it needs (score: 80, shell tip: 200, auto-fix: 1,024) and is capped at this value |
+| `manan-kanchu.temperature` | `0.1` | Sampling temperature for **every** AI request, 0–1. Lower is more consistent; 0–0.2 is recommended for analysis. Models that don't accept a custom temperature (such as GPT-6 Astra) ignore it |
+| `manan-kanchu.privacy.telemetry` | `false` | Reserved. The extension sends no telemetry |
+
+</details>
+
+```jsonc
+{
+  "manan-kanchu.preferredProvider": "ollama",
+  "manan-kanchu.policies": ["no-hardcoded-secrets", "no-eval", "no-sql-injection", "no-debugger"],
+  "manan-kanchu.scan.excludePatterns": ["node_modules", "dist", "out", "coverage"]
+}
+```
 
 ---
 
 ## Architecture
 
+The extension is layered: **entry point → panel → skills → analyzers → providers**. Analyzers are pure functions of the code you give them, so they are easy to test. Every read and write of a project file inside the workspace (scans, reports, file previews, *Apply fix*) goes through the **Filesystem MCP** server, which refuses any path that escapes the workspace.
+
+![Architecture](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/04-architecture.png)
+
+### Scan lifecycle
+
+What happens when you scan the current file:
+
+![Scan lifecycle sequence](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/05-scan-lifecycle.png)
+
+<details>
+<summary><b>Project structure</b></summary>
+
 ```
 src/
-├── extension.ts            ← Activation, command registration
+├── extension.ts                 ← Activation, commands, keybindings
 ├── core/
-│   ├── interfaces.ts       ← All shared TypeScript types
-│   ├── config.ts           ← Settings manager
-│   └── SecretManager.ts    ← OS keychain via VS Code SecretStorage
+│   ├── interfaces.ts            ← Shared TypeScript types
+│   ├── config.ts                ← Settings manager
+│   ├── SecretManager.ts         ← API keys in the OS keychain
+│   ├── pathUtils.ts             ← Workspace-safe path resolution
+│   └── modelNames.ts            ← Friendly model labels
 ├── providers/
-│   ├── AIProviderManager.ts  ← Auto-selection, provider lifecycle
-│   ├── AnthropicProvider.ts
-│   ├── OpenAIProvider.ts
-│   ├── GeminiProvider.ts
-│   ├── OllamaProvider.ts
-│   └── LMStudioProvider.ts
+│   ├── AIProviderManager.ts     ← Selection order, key removal
+│   ├── ConfiguredProvider.ts    ← Applies the maxTokens / temperature settings
+│   └── Anthropic · OpenAI · Gemini · Ollama · LMStudio providers
 ├── analyzers/
-│   ├── AICodeDetector.ts     ← Hybrid heuristic + AI scoring
-│   ├── VulnerabilityScanner.ts ← 20+ OWASP patterns
-│   ├── MaliciousCodeScanner.ts ← 7 malicious code categories
-│   ├── PolicyEvaluator.ts    ← 10 built-in + custom rules
-│   ├── ShellAnalyzer.ts      ← Shell command risk assessment
+│   ├── AICodeDetector.ts        ← Heuristics + AI blend
+│   ├── VulnerabilityScanner.ts  ← 91 patterns
+│   ├── MaliciousCodeScanner.ts  ← 7 categories
+│   ├── PolicyEvaluator.ts       ← 14 built-in rules
+│   ├── ShellAnalyzer.ts         ← 12 patterns
 │   └── utils.ts
 ├── panel/
-│   └── MainPanel.ts          ← WebviewPanel SPA (dashboard)
-├── skills/
-│   ├── SkillRegistry.ts
-│   ├── ScanFileSkill.ts
-│   ├── ScanProjectSkill.ts
-│   ├── GenerateReportSkill.ts
-│   └── SanitizeCodeSkill.ts
-└── mcp/
-    ├── MCPManager.ts
-    └── FilesystemMCP.ts
+│   ├── MainPanel.ts             ← WebviewPanel host
+│   ├── PanelMessageHandler.ts   ← Webview ↔ extension messages
+│   └── webview/                 ← Renderer, Body, Styles, Script
+├── skills/                      ← SkillRegistry, ScanFile, ScanProject, GenerateReport, SanitizeCode
+└── mcp/                         ← MCPManager, FilesystemMCP, workspaceFiles (workspace-confined file access)
 ```
 
----
+Diagram sources live in [`docs/diagrams`](docs/diagrams) as Mermaid files.
 
-## Adding GIF Demos
-
-To add demo GIFs to this README once you have recorded them:
-
-1. Place GIF files in the `media/` folder (keep each under 3 MB)
-2. Uncomment the corresponding `![...]` lines above each feature section
-
-| File | Content | Dimensions |
-|---|---|---|
-| `media/dashboard-overview.gif` | Opening the dashboard, switching tabs | 800×500 |
-| `media/scan-file.gif` | Right-click → Scan File → findings appear | 800×500 |
-| `media/scan-project.gif` | Full project scan with progress | 800×500 |
-| `media/vulnerability-finding.gif` | Clicking a critical finding, seeing details | 800×500 |
-| `media/provider-config.gif` | Configuring an API key, switching providers | 800×500 |
-| `media/report-export.gif` | Generating and opening a Markdown report | 800×500 |
-| `media/shell-analyzer.gif` | Shell command analysis with safe alternatives | 800×500 |
-
-**Recording tips:** Use ScreenToGif (Windows) or Kap (macOS). Use VS Code with **GitHub Dark** theme so the UI blends naturally. Crop to the VS Code window only.
+</details>
 
 ---
 
-## Privacy
+## Privacy & data flow
 
-- No telemetry by default (`manan-kanchu.privacy.telemetry: false`)
-- API keys stored in the OS keychain, never in settings files
-- Code sent only to your chosen provider — no manan-kanchu servers
-- Local providers (Ollama, LM Studio) keep everything 100% on-device
-- See [PRIVACY.md](./PRIVACY.md) for full details
+- **No telemetry** and **no manan-kanchu servers**.
+- The **dashboard makes no network requests**: no web fonts, no CDNs, and a strict content-security policy.
+- **API keys** are stored in the OS keychain and can be removed from the extension.
+- **Only snippets reach a provider, and only the one you chose**: about the first 1,800 characters of a file for AI detection, at most 3,000 characters of surrounding code plus the flagged line for an auto-fix, and the command text for shell tips.
+- **Local providers** (Ollama, LM Studio) keep everything on your machine.
+
+![Privacy data flow](https://raw.githubusercontent.com/sergioide007/manan-kanchu-code-ai/main/media/diagrams/06-privacy-data-flow.png)
+
+See [PRIVACY.md](PRIVACY.md) for the full policy.
+
+---
+
+## Limitations & responsible use
+
+- **AI-authorship detection is probabilistic.** A score is an indicator, not proof of who wrote the code. False positives and negatives happen, especially with short files, boilerplate-heavy code, and code shaped by strict style guides or formatters.
+- **Never use the score as the sole basis** for academic, disciplinary, employment or contractual decisions.
+- **Scanners are pattern-based.** They are not a substitute for a security review, a SAST/DAST pipeline or a dependency audit. To reduce noise, matches that sit inside a string literal on the same line are ignored (secret detectors are exempt).
+- **Project scans** skip hidden folders (except `.github`, `.circleci` and `.gitlab-ci.yml`), files over the size limit and unsupported extensions.
+- **Cloud providers receive the code snippets they analyze.** Use a local provider for sensitive or proprietary code.
+- **Review AI-suggested fixes** before applying them — *Apply* rewrites the file on disk (only inside the workspace).
 
 ---
 
 ## Contributing
 
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ```bash
 git clone https://github.com/sergioide007/manan-kanchu-code-ai
 cd manan-kanchu-code-ai
-npm install
-npm run compile   # or: npx tsc --watch
-npm test          # 41 unit tests across 6 suites
+npm ci
+npm run compile
+npm test        # 154 tests
+npm run lint
 ```
 
-Press **F5** in VS Code to launch the Extension Development Host.
+Press **F5** in VS Code to launch the Extension Development Host. Recording screenshots? See [docs/CONTRIBUTING-MEDIA.md](docs/CONTRIBUTING-MEDIA.md).
 
 ---
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](LICENSE).

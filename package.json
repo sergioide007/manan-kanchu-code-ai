@@ -2,7 +2,7 @@
   "name": "manan-kanchu-code-ai",
   "displayName": "manan-kanchu — AI Code Detector",
   "description": "Detect AI-generated code, scan vulnerabilities, audit policies, and protect your codebase with multi-provider AI intelligence.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "sergioide007",
   "icon": "resources/icon.png",
   "galleryBanner": {
@@ -164,8 +164,9 @@
         },
         "manan-kanchu.openai.model": {
           "type": "string",
-          "default": "gpt-4o",
-          "description": "OpenAI model to use."
+          "default": "gpt-6-astra",
+          "markdownDescription": "OpenAI model to use, e.g. `gpt-6-astra` (flagship) or `gpt-4o`. Reasoning models such as GPT-6 Astra are supported automatically.",
+          "description": "OpenAI model to use, e.g. gpt-6-astra or gpt-4o."
         },
         "manan-kanchu.openai.baseUrl": {
           "type": "string",
@@ -174,7 +175,7 @@
         },
         "manan-kanchu.gemini.model": {
           "type": "string",
-          "default": "gemini-1.5-pro",
+          "default": "gemini-3.1-flash-lite",
           "description": "Google Gemini model to use."
         },
         "manan-kanchu.gemini.baseUrl": {
@@ -200,12 +201,15 @@
         "manan-kanchu.maxTokens": {
           "type": "number",
           "default": 4096,
-          "description": "Maximum tokens per AI request."
+          "description": "Ceiling on tokens per AI request. Each feature asks for what it needs (e.g. 80 for a score) and is capped at this value.",
+          "minimum": 1
         },
         "manan-kanchu.temperature": {
           "type": "number",
           "default": 0.1,
-          "description": "AI temperature (lower = more deterministic analysis)."
+          "description": "Sampling temperature for every AI request, 0–1. Lower = more consistent analysis (recommended 0–0.2). Models that do not accept a custom temperature ignore it.",
+          "minimum": 0,
+          "maximum": 1
         },
         "manan-kanchu.requestTimeout": {
           "type": "number",

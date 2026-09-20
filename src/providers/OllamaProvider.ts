@@ -24,7 +24,9 @@ export class OllamaProvider implements AIProvider {
   async chat(messages: Message[], options: ChatOptions = {}): Promise<AIResponse> {
     const body = {
       model: this.modelName,
-      messages,
+      messages: options.systemPrompt
+        ? [{ role: 'system', content: options.systemPrompt }, ...messages]
+        : messages,
       stream: false,
       options: {
         num_predict: options.maxTokens ?? 4096,

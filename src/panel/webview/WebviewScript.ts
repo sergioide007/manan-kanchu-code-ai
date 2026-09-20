@@ -81,7 +81,7 @@ export function buildScript(): string {
     S.provider = provider;
     var badge = document.getElementById('providerBadge');
     if (provider) {
-      badge.textContent = String.fromCodePoint(0x26A1) + ' ' + provider.name;
+      badge.textContent = String.fromCodePoint(0x26A1) + ' ' + provider.name + (provider.model ? ' \u00B7 ' + provider.model : '');
       badge.style.borderColor = 'var(--green)';
       badge.style.color = 'var(--green)';
     } else {
@@ -416,30 +416,29 @@ export function buildScript(): string {
   }
 
   function renderPoliciesTab(summary) {
-    var policies = [
-      { id: 'no-hardcoded-secrets', name: 'No Hardcoded Secrets', desc: 'API keys and passwords not in source' },
-      { id: 'no-eval', name: 'No eval() Usage', desc: 'Dynamic code execution forbidden' },
-      { id: 'no-innerHTML', name: 'Safe innerHTML', desc: 'No direct innerHTML assignment' },
-      { id: 'license-compliance', name: 'License Headers', desc: 'SPDX identifiers in source files' },
-      { id: 'no-weak-crypto', name: 'No Weak Crypto', desc: 'MD5/SHA1 forbidden' },
-      { id: 'gdpr-personal-data-logging', name: 'GDPR Logging', desc: 'No PII in log statements' }
-    ];
+    // One card per policy that was actually evaluated (the active rules), with its real violation count.
+    var policies = (summary.policies || []).map(function(p) {
+      return { name: p.name, desc: p.description, violations: p.violations || 0 };
+    });
 
-    var violatedRules = new Set(
-      summary.fileResults.flatMap(function(r) { return r.findings; })
-        .filter(function(f) { return f.category === 'policy-violation'; })
-        .map(function(f) { return f.policyRule; })
-    );
+    if (!policies.length) {
+      document.getElementById('policyGrid').innerHTML = '';
+      document.getElementById('policySummary').innerHTML =
+        '<div class="detail-panel" style="margin-top:0;">No policies were evaluated. Enable rules with the manan-kanchu.policies setting.</div>';
+      return;
+    }
 
     document.getElementById('policyGrid').innerHTML = policies.map(function(p) {
-      var pass = !violatedRules.has(p.id);
+      var pass = p.violations === 0;
       return '<div class="policy-card ' + (pass ? 'pass' : 'fail') + '">' +
         '<div class="policy-status">' + (pass ? '&#x2705;' : '&#x274C;') + '</div>' +
-        '<div><div class="policy-name">' + p.name + '</div><div class="policy-desc">' + p.desc + '</div></div>' +
+        '<div><div class="policy-name">' + esc(p.name) + '</div><div class="policy-desc">' + esc(p.desc) + '</div></div>' +
+        (pass ? '' : '<span class="badge high" style="margin-left:auto;">' + p.violations + '</span>') +
       '</div>';
     }).join('');
 
-    var passing = policies.filter(function(p) { return !violatedRules.has(p.id); }).length;
+    var passing = policies.filter(function(p) { return p.violations === 0; }).length;
+    var totalViolations = policies.reduce(function(n, p) { return n + p.violations; }, 0);
     var pct = Math.round(passing / policies.length * 100);
     document.getElementById('policySummary').innerHTML =
       '<div class="detail-panel" style="margin-top:0;margin-bottom:16px;display:flex;align-items:center;gap:16px;">' +
@@ -448,26 +447,26 @@ export function buildScript(): string {
         '</div>' +
         '<div><div style="font-size:16px;font-weight:700;">' + passing + '/' + policies.length + ' policies passing</div>' +
         '<div style="font-size:12px;color:var(--fg1);margin-top:4px;">' +
-          (pct === 100 ? 'All policies satisfied &#x2705;' : (policies.length - passing) + ' violations found across project') +
+          (totalViolations === 0 ? 'All policies satisfied &#x2705;' : totalViolations + ' violations across ' + (policies.length - passing) + ' failing rules') +
         '</div></div>' +
       '</div>';
   }
 
   function renderProvidersGrid(activeProvider) {
     var providers = [
-      { name: 'Anthropic Claude', icon: '&#x1F7E3;', local: false },
-      { name: 'OpenAI GPT', icon: '&#x1F7E2;', local: false },
-      { name: 'Google Gemini', icon: '&#x1F535;', local: false },
-      { name: 'Ollama (Local)', icon: '&#x1F7E1;', local: true },
-      { name: 'LM Studio (Local)', icon: '&#x1F7E0;', local: true }
+      { type: 'anthropic', name: 'Anthropic Claude', icon: '&#x1F7E3;', local: false },
+      { type: 'openai', name: 'OpenAI', icon: '&#x1F7E2;', local: false },
+      { type: 'gemini', name: 'Google Gemini', icon: '&#x1F535;', local: false },
+      { type: 'ollama', name: 'Ollama (Local)', icon: '&#x1F7E1;', local: true },
+      { type: 'lmstudio', name: 'LM Studio (Local)', icon: '&#x1F7E0;', local: true }
     ];
     var el = document.getElementById('providersGrid');
     if (!el) return;
     el.innerHTML = '<div class="policy-grid">' + providers.map(function(p) {
-      var active = activeProvider && activeProvider.name === p.name;
+      var active = activeProvider && activeProvider.type === p.type;
       return '<div class="policy-card ' + (active ? 'pass' : '') + '" style="cursor:pointer;" data-action="configure-provider">' +
         '<div class="policy-status">' + p.icon + '</div>' +
-        '<div><div class="policy-name">' + p.name + '</div><div class="policy-desc">' + (p.local ? 'Local model' : 'Cloud API') + '</div></div>' +
+        '<div><div class="policy-name">' + p.name + '</div><div class="policy-desc">' + (active && activeProvider.model ? esc(activeProvider.model) : (p.local ? 'Local model' : 'Cloud API')) + '</div></div>' +
         (active ? '<span class="badge low">Active</span>' : '') +
       '</div>';
     }).join('') + '</div>';
@@ -486,9 +485,9 @@ export function buildScript(): string {
     circle.className = 'score-circle ' + scoreClass(score);
     document.getElementById('scoreVal').textContent = pct + '%';
     document.getElementById('scoreLabel').textContent =
-      score > 0.8 ? '&#x1F534; High AI probability' :
-      score > 0.65 ? '&#x1F7E0; Likely AI-generated' :
-      score > 0.4 ? '&#x1F7E1; Possibly AI-assisted' : '&#x1F7E2; Likely human-written';
+      score > 0.8 ? String.fromCodePoint(0x1F534) + ' High AI probability' :
+      score > 0.65 ? String.fromCodePoint(0x1F7E0) + ' Likely AI-generated' :
+      score > 0.4 ? String.fromCodePoint(0x1F7E1) + ' Possibly AI-assisted' : String.fromCodePoint(0x1F7E2) + ' Likely human-written';
   }
 
   function scoreClass(score) {
@@ -602,7 +601,7 @@ export function buildScript(): string {
     } else if (action === 'copy-snippet') {
       var btn = target;
       navigator.clipboard.writeText(target.dataset.snippet || '').then(function() {
-        btn.textContent = '&#x2713;'; btn.classList.add('copied');
+        btn.textContent = String.fromCodePoint(0x2713); btn.classList.add('copied');
         setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
       }).catch(function() {});
     } else if (action === 'file-detail') {

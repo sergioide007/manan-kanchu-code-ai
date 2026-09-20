@@ -14,8 +14,10 @@ export class GeminiProvider implements AIProvider {
   async isAvailable(): Promise<boolean> {
     if (!this.apiKey) return false;
     try {
-      const url = `${this.baseUrl}/models?key=${this.apiKey}`;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      const resp = await fetch(`${this.baseUrl}/models`, {
+        headers: { 'x-goog-api-key': this.apiKey },
+        signal: AbortSignal.timeout(3000),
+      });
       return resp.ok;
     } catch {
       return false;
@@ -42,10 +44,11 @@ export class GeminiProvider implements AIProvider {
       body['systemInstruction'] = { parts: [{ text: options.systemPrompt }] };
     }
 
-    const url = `${this.baseUrl}/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+    // Key travels in a header (not the URL) so it never ends up in logs or error messages.
+    const url = `${this.baseUrl}/models/${this.modelName}:generateContent`;
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(this.timeout),
     });

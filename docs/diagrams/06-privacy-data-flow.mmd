@@ -1,0 +1,18 @@
+flowchart LR
+    subgraph DEVICE["Your machine"]
+        VS["VS Code +<br/>manan-kanchu<br/>dashboard makes no network requests"]
+        KC[("OS keychain<br/>SecretStorage")]
+        LOCAL["Ollama / LM Studio<br/>localhost"]
+        VS <-->|"API keys"| KC
+        VS <-->|"code never leaves the device"| LOCAL
+    end
+
+    subgraph CLOUD["Only if you choose a cloud provider"]
+        ANT["Anthropic"]
+        GEM["Google Gemini"]
+        OAI["OpenAI"]
+    end
+
+    VS -.->|"snippets only<br/>~1,800 chars for detection<br/>3,000 chars max for auto-fix<br/>your own key"| ANT
+    VS -.-> GEM
+    VS -.-> OAI

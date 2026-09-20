@@ -18,7 +18,7 @@ export class MainPanel {
     _context: vscode.ExtensionContext,
     aiManager: AIProviderManager,
     skillRegistry: SkillRegistry,
-    _mcpManager: MCPManager,
+    mcpManager: MCPManager,
     config: MananKanchuConfigManager
   ): void {
     const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
@@ -32,21 +32,23 @@ export class MainPanel {
       column,
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    MainPanel.current = new MainPanel(panel, aiManager, skillRegistry, config);
+    MainPanel.current = new MainPanel(panel, aiManager, skillRegistry, config, mcpManager);
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     aiManager: AIProviderManager,
     skillRegistry: SkillRegistry,
-    config: MananKanchuConfigManager
+    config: MananKanchuConfigManager,
+    mcpManager: MCPManager
   ) {
     this._panel = panel;
     this._handler = new PanelMessageHandler(
       aiManager,
       skillRegistry,
       config,
-      (data) => this._panel.webview.postMessage(data)
+      (data) => this._panel.webview.postMessage(data),
+      mcpManager
     );
 
     this._handler.setLastEditor(vscode.window.activeTextEditor);

@@ -1,4 +1,8 @@
 import { Skill, SkillContext, SkillResult, CodeFinding } from '../core/interfaces';
+import { truncate } from '../analyzers/utils';
+
+// PRIVACY.md promises that at most 3,000 characters of code reach a cloud provider.
+const MAX_CONTEXT_CHARS = 3000;
 
 function findMethodStart(lines: string[], fromIndex: number): number {
   const declPattern = /^\s*(export\s+)?(default\s+)?(async\s+)?(function[\s*]|class\s+\w|const\s+\w+\s*=\s*(async\s+)?\(|[a-zA-Z_$][\w$]*\s*\([^)]*\)\s*[:{]|public\s|private\s|protected\s)/;
@@ -43,7 +47,7 @@ export class SanitizeCodeSkill implements Skill {
     if (!code || !finding) return { success: false, errors: ['code and finding are required'] };
     if (!context.ai) return { success: false, errors: ['AI provider required for sanitization'] };
 
-    const methodContext = getMethodContext(code, finding.startLine, finding.endLine);
+    const methodContext = truncate(getMethodContext(code, finding.startLine, finding.endLine), MAX_CONTEXT_CHARS);
 
     const prompt = `You are a security expert. Fix the following code issue.
 
@@ -55,7 +59,7 @@ Recommendation: ${finding.recommendation ?? 'Follow security best practices'}
 
 Problematic code snippet (lines ${finding.startLine}-${finding.endLine}):
 \`\`\`
-${finding.snippet}
+${truncate(finding.snippet, 500)}
 \`\`\`
 
 Full method/function context:

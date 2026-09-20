@@ -68,6 +68,38 @@ describe('AIProviderManager', () => {
     expect(typeof result).toBe('boolean');
   });
 
+  it('removeProvider deletes the stored key and drops the provider', async () => {
+    const store: Record<string, string> = { 'manan-kanchu.apikey.anthropic': 'sk-test' };
+    const storage = {
+      get: jest.fn(async (k: string) => store[k]),
+      store: jest.fn(async (k: string, v: string) => { store[k] = v; }),
+      delete: jest.fn(async (k: string) => { delete store[k]; }),
+    };
+    const manager = new AIProviderManager(config, new SecretManager(storage as never));
+    await manager.initialize();
+    expect(manager.getAll().some(p => p.type === 'anthropic')).toBe(true);
+    await manager.removeProvider('anthropic');
+    expect(storage.delete).toHaveBeenCalledWith('manan-kanchu.apikey.anthropic');
+    expect(manager.getAll().some(p => p.type === 'anthropic')).toBe(false);
+  });
+
+  it('wraps every provider so the settings apply, and reports friendly model names', async () => {
+    const storage = { get: jest.fn(async (k: string) => (k.endsWith('openai') ? 'sk-x' : undefined)), store: jest.fn(), delete: jest.fn() };
+    const manager = new AIProviderManager(config, new SecretManager(storage as never));
+    await manager.initialize();
+    const openai = manager.getAll().find(p => p.type === 'openai')!;
+    expect(openai.constructor.name).toBe('ConfiguredProvider');
+    expect(openai.name).toBe('OpenAI');
+    expect(openai.modelName).toBe('gpt-6-astra');
+  });
+
+  it('removeProvider ignores local providers', async () => {
+    const manager = new AIProviderManager(config, secrets);
+    await manager.initialize();
+    await manager.removeProvider('ollama');
+    expect(manager.getAll().some(p => p.type === 'ollama')).toBe(true);
+  });
+
   it('getActiveInfo returns null when no active provider', async () => {
     const manager = new AIProviderManager(config, secrets);
     // Not initialized — active is null

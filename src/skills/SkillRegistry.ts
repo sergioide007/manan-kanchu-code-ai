@@ -1,9 +1,12 @@
-import { Skill, SkillContext, SkillResult, MananKanchuConfig } from '../core/interfaces';
+import { Skill, SkillContext, SkillResult, MananKanchuConfig, MCPExecutor } from '../core/interfaces';
 
 export class SkillRegistry {
   private skills: Map<string, Skill> = new Map();
 
-  constructor(private readonly config?: MananKanchuConfig) {}
+  constructor(
+    private readonly config?: MananKanchuConfig,
+    private readonly mcp?: MCPExecutor
+  ) {}
 
   register(skill: Skill): void {
     this.skills.set(skill.id, skill);
@@ -13,7 +16,7 @@ export class SkillRegistry {
     const skill = this.skills.get(id);
     if (!skill) return { success: false, errors: [`Skill '${id}' not found`] };
 
-    const enriched: SkillContext = { ...context, config: context.config ?? this.config };
+    const enriched: SkillContext = { ...context, config: context.config ?? this.config, mcp: context.mcp ?? this.mcp };
 
     try {
       return await skill.execute(enriched);

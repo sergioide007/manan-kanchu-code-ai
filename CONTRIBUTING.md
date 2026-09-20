@@ -57,34 +57,37 @@ npm install -g @vscode/vsce
 ```
 manan-kanchu-code-ai/
 ├── src/
-│   ├── core/                  # Shared interfaces, config, SecretManager
+│   ├── core/                  # Shared interfaces, config, SecretManager, pathUtils, modelNames
 │   ├── providers/             # AI provider adapters (Anthropic, OpenAI, Gemini, Ollama, LMStudio)
-│   │   └── AIProviderManager.ts
-│   ├── analyzers/             # Detection engines
+│   │   ├── AIProviderManager.ts   # Selection order, key removal
+│   │   └── ConfiguredProvider.ts  # Applies the maxTokens / temperature settings to every request
+│   ├── analyzers/             # Detection engines (pure functions — no VS Code API)
 │   │   ├── AICodeDetector.ts
-│   │   ├── VulnScanner.ts
-│   │   ├── MaliciousScanner.ts
+│   │   ├── VulnerabilityScanner.ts
+│   │   ├── MaliciousCodeScanner.ts
 │   │   ├── PolicyEvaluator.ts
 │   │   ├── ShellAnalyzer.ts
 │   │   └── utils.ts
-│   ├── panel/                 # WebviewPanel UI (single-scroll, collapsible sections)
-│   │   └── MainPanel.ts
+│   ├── panel/                 # WebviewPanel UI
+│   │   ├── MainPanel.ts
+│   │   ├── PanelMessageHandler.ts
+│   │   └── webview/           # Renderer, Body, Styles, Script
 │   ├── skills/                # Extensible skill registry
 │   │   ├── SkillRegistry.ts
 │   │   ├── ScanFileSkill.ts
 │   │   ├── ScanProjectSkill.ts
 │   │   ├── GenerateReportSkill.ts
 │   │   └── SanitizeCodeSkill.ts
-│   ├── mcp/                   # Model Context Protocol integration
+│   ├── mcp/                   # Workspace-confined file access
 │   │   ├── MCPManager.ts
-│   │   └── FilesystemMCP.ts
+│   │   ├── FilesystemMCP.ts
+│   │   └── workspaceFiles.ts  # readWorkspaceFile / writeWorkspaceFile helpers
 │   ├── extension.ts           # Extension entry point
 │   └── test/
 │       ├── __mocks__/vscode.ts
 │       └── unit/
-│           ├── analyzers/
-│           ├── core/
-│           └── providers/
+├── docs/                      # Diagram sources (Mermaid) and the media guide
+├── media/                     # README screenshots and rendered diagrams
 ├── icons/
 ├── resources/
 ├── CHANGELOG.md
@@ -186,7 +189,7 @@ Coverage thresholds enforced globally:
 | Lines | 70 % |
 | Statements | 70 % |
 
-`ShellAnalyzer.ts` and `utils.ts` require **100 % branch coverage** — keep this when editing those files.
+Security-critical code (`src/analyzers/`) should keep high branch coverage: add a test for every pattern you add or change, including a case that must **not** match.
 
 ### Writing Tests
 
@@ -203,7 +206,7 @@ Coverage thresholds enforced globally:
 npm run lint          # ESLint with TypeScript rules
 ```
 
-Configuration is in [`.eslintrc.json`](.eslintrc.json). The project uses `@typescript-eslint` strict rules.  
+Configuration is in [`.eslintrc.json`](.eslintrc.json). The project uses the `@typescript-eslint` recommended rules (`tsconfig.eslint.json` also covers the tests).  
 Fix auto-fixable issues with:
 
 ```bash
@@ -256,20 +259,27 @@ Include:
 
 ### Adding an AI Provider
 
-1. Create `src/providers/<Name>Provider.ts` implementing the `AIProvider` interface from `src/core/interfaces.ts`.
-2. Register it in `src/providers/AIProviderManager.ts`.
-3. Add configuration entries in `package.json` under `contributes.configuration.properties` (follow the pattern of existing providers).
-4. Add unit tests in `src/test/unit/providers/`.
+1. Add the new ID to the `ProviderType` union in `src/core/interfaces.ts`.
+2. Create `src/providers/<Name>Provider.ts` implementing the `AIProvider` interface.
+3. Register it in `src/providers/AIProviderManager.ts` with `this.register(...)` (this wraps it in `ConfiguredProvider`, so the `maxTokens` / `temperature` settings apply automatically) and add it to the selection order.
+4. Add configuration entries in `package.json` under `contributes.configuration.properties` and a getter in `src/core/config.ts`.
+5. Add a label in `src/core/modelNames.ts` for its default model, and an entry in the provider list in `WebviewScript.ts` and `PanelMessageHandler.configureProvider`.
+6. Add unit tests in `src/test/unit/providers/`.
 
 ```typescript
-// Minimal skeleton
-import { AIProvider, AnalysisRequest, AnalysisResult } from '../core/interfaces';
+import { AIProvider, AIResponse, ChatOptions, Message } from '../core/interfaces';
 
 export class MyProvider implements AIProvider {
-  readonly name = 'myprovider';
+  readonly name = 'My Provider';
+  readonly type = 'myprovider' as const;
 
-  async isAvailable(): Promise<boolean> { /* check connectivity */ }
-  async analyze(request: AnalysisRequest): Promise<AnalysisResult> { /* call API */ }
+  constructor(readonly modelName: string, private readonly endpoint: string, private readonly timeout: number) {}
+
+  async isAvailable(): Promise<boolean> { /* cheap reachability check, short timeout */ }
+  async chat(messages: Message[], options: ChatOptions = {}): Promise<AIResponse> { /* call the API */ }
+  async complete(prompt: string, options?: ChatOptions): Promise<string> {
+    return (await this.chat([{ role: 'user', content: prompt }], options)).content;
+  }
 }
 ```
 
@@ -277,14 +287,15 @@ export class MyProvider implements AIProvider {
 
 1. Create `src/analyzers/<Name>Analyzer.ts`.
 2. Keep the analyzer pure (no VS Code API calls) so it remains unit-testable.
-3. Wire it into `MainPanel.ts` or the relevant skill.
+3. Wire it into the relevant skill in `src/skills/`.
 4. Add tests with 100 % branch coverage if the file is security-critical.
 
 ### Adding a Skill
 
-1. Create `src/skills/<Name>Skill.ts` implementing the `Skill` interface from `src/skills/SkillRegistry.ts`.
-2. Register it in `SkillRegistry.ts`.
-3. Expose it as a VS Code command in `package.json` → `contributes.commands` and `extension.ts`.
+1. Create `src/skills/<n>Skill.ts` implementing the `Skill` interface from `src/core/interfaces.ts`.
+2. Register it in `src/extension.ts` with `skillRegistry.register(new MySkill())`.
+3. Trigger it from `PanelMessageHandler` (webview) and/or expose it as a command in `package.json` → `contributes.commands` and `extension.ts`.
+4. Read and write project files through `readWorkspaceFile` / `writeWorkspaceFile` (`src/mcp/workspaceFiles.ts`) with `context.mcp`, so access stays confined to the workspace.
 
 ---
 
@@ -293,7 +304,7 @@ export class MyProvider implements AIProvider {
 If you find a security vulnerability, **do not open a public issue**.  
 Email the maintainer privately or use [GitHub's private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability).
 
-When contributing code that handles user secrets or API keys, always use `SecretManager` (`src/core/SecretManager.ts`) — which wraps VS Code's `SecretStorage` — and never write credentials to disk or logs.
+When contributing code that handles user secrets or API keys, always use `SecretManager` (`src/core/SecretManager.ts`) — which wraps VS Code's `SecretStorage` — and never write credentials to disk or logs. Send API keys in headers, never in URLs.
 
 ---
 
@@ -301,4 +312,4 @@ When contributing code that handles user secrets or API keys, always use `Secret
 
 By contributing you agree that your changes will be released under the [MIT License](LICENSE) that covers this project.
 
-Copyright (c) 2026 SpecSolid
+Copyright (c) 2026 manan-kanchu-code-ai

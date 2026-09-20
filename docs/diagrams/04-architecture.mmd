@@ -1,0 +1,60 @@
+flowchart TB
+    subgraph ENTRY["Entry point"]
+        EXT["extension.ts<br/>activation · commands · keybindings"]
+    end
+
+    subgraph UI["Presentation · panel/"]
+        MP["MainPanel.ts"]
+        PMH["PanelMessageHandler.ts<br/>webview messages · fixes · reports"]
+        WV["webview/<br/>Renderer · Body · Styles · Script"]
+        MP --> PMH
+        MP --> WV
+    end
+
+    subgraph SKILLS["Skills · skills/"]
+        REG["SkillRegistry"]
+        SK["ScanFile · ScanProject<br/>GenerateReport · SanitizeCode"]
+        REG --> SK
+    end
+
+    subgraph AN["Analyzers · analyzers/"]
+        AN1["AICodeDetector"]
+        AN2["VulnerabilityScanner"]
+        AN3["MaliciousCodeScanner"]
+        AN4["PolicyEvaluator"]
+        AN5["ShellAnalyzer"]
+    end
+
+    subgraph PROV["AI providers · providers/"]
+        PM["AIProviderManager"]
+        PR["Ollama · LM Studio<br/>Anthropic · Gemini · OpenAI"]
+        CP["ConfiguredProvider<br/>applies maxTokens and temperature"]
+        PM --> CP --> PR
+    end
+
+    subgraph CORE["Core · core/"]
+        CFG["config.ts"]
+        SEC["SecretManager.ts<br/>OS keychain"]
+        PU["pathUtils.ts"]
+        INT["interfaces.ts"]
+    end
+
+    subgraph MCP["mcp/ · all project-file access"]
+        FS["MCPManager · FilesystemMCP<br/>read_file · write_file · list_files<br/>confined to the workspace"]
+    end
+
+    EXT --> MP
+    PMH --> REG
+    PMH --> AN5
+    PMH --> PM
+    SK --> AN1 & AN2 & AN3 & AN4
+    SK --> PM
+    AN1 --> PM
+    AN5 --> PM
+    PM --> SEC
+    PM --> CFG
+    PMH --> PU
+    FS --> PU
+    EXT -->|registers| FS
+    SK -->|read and write files| FS
+    PMH -->|previews and Apply fix| FS

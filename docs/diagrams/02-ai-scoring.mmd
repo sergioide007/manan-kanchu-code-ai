@@ -1,0 +1,12 @@
+flowchart TD
+    F["Source file"] --> H["Heuristics · 7 signals<br/>comment patterns · comment density · generic identifiers<br/>boilerplate · structure uniformity · entropy · line-length variance"]
+    F --> S["AI semantic score 0 to 1<br/>first ~1,800 characters · temperature 0"]
+    S -->|"no provider, or reply unusable"| FB["Heuristic score only<br/>reported as heuristic-only"]
+    H --> M(("Weighted blend<br/>default 0.4 heuristic + 0.6 AI<br/>weights are normalised"))
+    S --> M
+    FB --> M
+    M --> C["Per-language calibration"]
+    C --> T{"Final score"}
+    T -->|"below 0.45"| N["clean"]
+    T -->|"0.45 to 0.72"| U["uncertain<br/>finding: human review recommended"]
+    T -->|"0.72 or above"| Y["detected<br/>finding: AI-generated content"]

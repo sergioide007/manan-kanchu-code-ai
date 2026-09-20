@@ -148,6 +148,13 @@ export interface ShellIssue {
 
 // ─── Project Scan Types ───────────────────────────────────────────────────────
 
+export interface PolicyStatus {
+  id: string;
+  name: string;
+  description: string;
+  violations: number;
+}
+
 export interface ScanSummary {
   projectPath: string;
   filesScanned: number;
@@ -160,6 +167,10 @@ export interface ScanSummary {
   aiGeneratedFiles: number;
   averageAiScore: number;
   topFindings: CodeFinding[];
+  /** Every active policy rule with its violation count (drives the Policies tab). */
+  policies?: PolicyStatus[];
+  /** Rules that were actually evaluated in this scan (drives the Policies tab). */
+  policyRules?: Array<{ id: string; name: string; description: string }>;
   fileResults: FileScanResult[];
   scanDurationMs: number;
   startedAt: string;
@@ -184,6 +195,8 @@ export interface SkillContext {
   workspace: string;
   parameters: Record<string, unknown>;
   config?: MananKanchuConfig;
+  /** Workspace-confined tool access. Skills read and write project files through it when available. */
+  mcp?: MCPExecutor;
 }
 
 export interface SkillResult {
@@ -215,6 +228,7 @@ export interface MCPServer {
 
 export interface MCPExecutor {
   executeTool(serverId: string, toolName: string, params: Record<string, unknown>): Promise<unknown>;
+  hasTool(serverId: string, toolName: string): boolean;
 }
 
 // ─── Config Type ──────────────────────────────────────────────────────────────

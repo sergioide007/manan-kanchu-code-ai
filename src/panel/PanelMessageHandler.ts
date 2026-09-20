@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import { AIProviderManager } from '../providers/AIProviderManager';
 import { SkillRegistry } from '../skills/SkillRegistry';
 import { MananKanchuConfigManager } from '../core/config';
-import { WebviewMessage, ScanSummary, FileScanResult, CodeFinding, ShellAnalysis, ProviderType } from '../core/interfaces';
+import { WebviewMessage, ScanSummary, FileScanResult, CodeFinding, ShellAnalysis, ProviderType, MCPExecutor } from '../core/interfaces';
+import { readWorkspaceFile, writeWorkspaceFile } from '../mcp/workspaceFiles';
 import { ShellAnalyzer } from '../analyzers/ShellAnalyzer';
+import { isInside, resolveAgainst } from '../core/pathUtils';
 
 export type PostFn = (data: Record<string, unknown>) => void;
 
@@ -19,8 +20,18 @@ export class PanelMessageHandler {
     private readonly aiManager: AIProviderManager,
     private readonly skillRegistry: SkillRegistry,
     private readonly config: MananKanchuConfigManager,
-    private readonly post: PostFn
+    private readonly post: PostFn,
+    private readonly mcp?: MCPExecutor
   ) {}
+
+  private _workspaceRoot(): string {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
+  }
+
+  /** Findings from project scans carry workspace-relative paths; make them absolute. */
+  private _abs(filePath: string): string {
+    return resolveAgainst(this._workspaceRoot(), filePath);
+  }
 
   setLastEditor(editor: vscode.TextEditor | undefined): void {
     if (editor) this._lastEditor = editor;
@@ -129,9 +140,12 @@ export class PanelMessageHandler {
   async scanShell(command?: string): Promise<void> {
     if (!command) { this.post({ type: 'scan-error', message: 'No shell command provided' }); return; }
     const ai = this.aiManager.getActive();
-    const analyzer = new ShellAnalyzer(ai);
-    const analysis: ShellAnalysis = await analyzer.analyze(command);
-    this.post({ type: 'shell-result', analysis });
+    try {
+      const analysis: ShellAnalysis = await new ShellAnalyzer(ai).analyze(command);
+      this.post({ type: 'shell-result', analysis });
+    } catch (e) {
+      this.post({ type: 'scan-error', message: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   async generateReport(format?: string): Promise<void> {
@@ -150,8 +164,12 @@ export class PanelMessageHandler {
     if (result.success) {
       const { report, reportPath } = result.output as { report: unknown; reportPath: string };
       this.post({ type: 'report-ready', report, reportPath });
-      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(reportPath));
-      await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+      try {
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(reportPath));
+        await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+      } catch (e) {
+        vscode.window.showWarningMessage(`Report saved to ${reportPath} but could not be opened: ${e instanceof Error ? e.message : String(e)}`);
+      }
     } else {
       this.post({ type: 'report-error', message: result.errors?.[0] });
     }
@@ -165,7 +183,7 @@ export class PanelMessageHandler {
     const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
     let fileCode = code ?? '';
     if (!fileCode && finding.filePath) {
-      try { fileCode = fs.readFileSync(finding.filePath, 'utf-8'); } catch { /* keep empty */ }
+      try { fileCode = await readWorkspaceFile(this.mcp, workspace, finding.filePath); } catch { /* keep empty */ }
     }
 
     const result = await this.skillRegistry.execute('sanitize-code', {
@@ -187,7 +205,7 @@ export class PanelMessageHandler {
       { label: 'Ollama (Local)', id: 'ollama', isLocal: true },
       { label: 'LM Studio (Local)', id: 'lmstudio', isLocal: true },
       { label: 'Anthropic Claude', id: 'anthropic', isLocal: false },
-      { label: 'OpenAI GPT', id: 'openai', isLocal: false },
+      { label: 'OpenAI', id: 'openai', isLocal: false },
       { label: 'Google Gemini', id: 'gemini', isLocal: false },
     ];
     const pick = await vscode.window.showQuickPick(providers.map(p => p.label), { placeHolder: 'Select AI provider' });
@@ -197,11 +215,17 @@ export class PanelMessageHandler {
 
     if (!provider.isLocal) {
       const key = await vscode.window.showInputBox({
-        prompt: `Enter API key for ${provider.label}`,
+        prompt: `Enter API key for ${provider.label} (leave blank to remove the stored key)`,
         password: true,
         ignoreFocusOut: true,
       });
-      if (!key) return;
+      if (key === undefined) return; // dismissed
+      if (key === '') {
+        await this.aiManager.removeProvider(provider.id as ProviderType);
+        vscode.window.showInformationMessage(`Stored API key removed: ${provider.label}`);
+        this.sendProviderInfo();
+        return;
+      }
       await this.aiManager.refreshProvider(provider.id as ProviderType, key);
     } else {
       await this.config.updateSetting('preferredProvider', provider.id);
@@ -263,9 +287,9 @@ export class PanelMessageHandler {
     }
   }
 
-  getFilePreview(filePath: string): void {
+  async getFilePreview(filePath: string): Promise<void> {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const content = await readWorkspaceFile(this.mcp, this._workspaceRoot(), filePath);
       const allLines = content.split('\n');
       const lines = allLines.slice(0, 300).map((text, i) => ({ n: i + 1, text }));
       this.post({ type: 'file-preview', filePath, lines, total: allLines.length });
@@ -278,7 +302,7 @@ export class PanelMessageHandler {
     let code: string | undefined;
     if (startLine && endLine && endLine >= startLine) {
       try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = await readWorkspaceFile(this.mcp, this._workspaceRoot(), filePath);
         code = content.split('\n').slice(startLine - 1, endLine).join('\n');
       } catch { /* fallback to full file */ }
     }
@@ -287,14 +311,24 @@ export class PanelMessageHandler {
 
   async applyFix(findingId: string, filePath: string, startLine: number, endLine: number, fixedCode: string): Promise<void> {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const lines = content.split('\n');
+      const root = this._workspaceRoot();
+      const abs = this._abs(filePath);
+
+      // Only rewrite files inside the workspace, or files the user already has open.
+      const isOpen = (vscode.workspace.textDocuments ?? []).some(d => path.normalize(d.fileName) === path.normalize(abs));
+      if (!isInside(root, abs) && !isOpen) {
+        throw new Error('Refusing to modify a file outside the workspace');
+      }
+
+      const content = await readWorkspaceFile(this.mcp, root, abs);
+      const eol = content.includes('\r\n') ? '\r\n' : '\n';
+      const lines = content.split(/\r?\n/);
       const lineStart = Math.max(0, startLine - 1);
       const lineEnd = Math.min(lines.length, endLine);
 
       const originalFirstLine = lines[lineStart] ?? '';
       const baseIndent = originalFirstLine.match(/^(\s*)/)?.[1] ?? '';
-      const fixedLines = fixedCode.split('\n');
+      const fixedLines = fixedCode.split(/\r?\n/);
       const fixFirstIndent = fixedLines[0]?.match(/^(\s*)/)?.[1] ?? '';
 
       const adjustedFixed = baseIndent.length > fixFirstIndent.length
@@ -302,7 +336,7 @@ export class PanelMessageHandler {
         : fixedLines;
 
       const newLines = [...lines.slice(0, lineStart), ...adjustedFixed, ...lines.slice(lineEnd)];
-      fs.writeFileSync(filePath, newLines.join('\n'), 'utf-8');
+      await writeWorkspaceFile(this.mcp, root, abs, newLines.join(eol));
       this.post({ type: 'fix-applied', findingId, filePath });
     } catch (e) {
       this.post({ type: 'fix-error', findingId, message: e instanceof Error ? e.message : String(e) });

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Skill, SkillContext, SkillResult, ScanSummary, FileScanResult, CodeFinding } from '../core/interfaces';
+import { Skill, SkillContext, SkillResult, ScanSummary, FileScanResult, CodeFinding, PolicyStatus } from '../core/interfaces';
+import { readWorkspaceFile } from '../mcp/workspaceFiles';
 import { AICodeDetector } from '../analyzers/AICodeDetector';
 import { VulnerabilityScanner } from '../analyzers/VulnerabilityScanner';
 import { MaliciousCodeScanner } from '../analyzers/MaliciousCodeScanner';
@@ -12,12 +13,18 @@ const SCANNABLE_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cs', '.cpp', '.c',
   '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.sh', '.ps1',
   '.html', '.vue', '.svelte',
+  // Extensions the vulnerability rules already target but project scans used to skip
+  '.mjs', '.cjs', '.cc', '.cxx', '.h', '.hpp', '.phtml', '.rake', '.kts',
+  '.scala', '.dart', '.bash',
   // DevOps / IaC
   '.tf', '.hcl', '.yaml', '.yml', '.json',
 ]);
 
 // Files with no extension that should be scanned
 const SCANNABLE_BASENAMES = new Set(['Dockerfile', 'Makefile', 'Jenkinsfile']);
+
+// Hidden entries that must still be walked: CI/CD pipelines are covered by the CICD-* rules.
+const ALLOWED_HIDDEN = new Set(['.github', '.gitlab-ci.yml', '.circleci']);
 
 // Always excluded regardless of user config — generated/vendor/test-output dirs contain
 // non-source content that would produce mass false positives in the security scanners.
@@ -55,7 +62,7 @@ export class ScanProjectSkill implements Skill {
 
     for (const filePath of files) {
       try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = await readWorkspaceFile(context.mcp, workspaceRoot, filePath);
         const relPath = path.relative(workspaceRoot, filePath);
 
         const [aiResult, vulnResult] = await Promise.all([
@@ -101,6 +108,15 @@ export class ScanProjectSkill implements Skill {
     }
 
     const allFindings = fileResults.flatMap(r => r.findings);
+    const active = context.config?.activePolicies;
+    const policies: PolicyStatus[] = policyEvaluator.getRules()
+      .filter(rule => !active || active.includes(rule.id))
+      .map(rule => ({
+        id: rule.id,
+        name: rule.name,
+        description: rule.description,
+        violations: allFindings.filter(f => f.category === 'policy-violation' && f.policyRule === rule.id).length,
+      }));
     const summary: ScanSummary = {
       projectPath: workspaceRoot,
       filesScanned: fileResults.length,
@@ -114,12 +130,16 @@ export class ScanProjectSkill implements Skill {
       averageAiScore: fileResults.length
         ? fileResults.reduce((s, r) => s + r.aiScore, 0) / fileResults.length
         : 0,
+      policies,
       topFindings: allFindings
         .sort((a, b) => {
           const weights = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
           return weights[b.severity] - weights[a.severity];
         })
         .slice(0, 10),
+      policyRules: policyEvaluator.getRules()
+        .filter(r => !context.config?.activePolicies || context.config.activePolicies.includes(r.id))
+        .map(({ id, name, description }) => ({ id, name, description })),
       fileResults,
       scanDurationMs: Date.now() - start,
       startedAt,
@@ -147,7 +167,7 @@ export class ScanProjectSkill implements Skill {
 
     for (const entry of entries) {
       if (excludePatterns.some(p => this._matchesPattern(entry.name, p))) continue;
-      if (entry.name.startsWith('.') && !entry.name.startsWith('.env')) continue;
+      if (entry.name.startsWith('.') && !entry.name.startsWith('.env') && !ALLOWED_HIDDEN.has(entry.name)) continue;
 
       const fullPath = path.join(dir, entry.name);
 
