@@ -32,6 +32,7 @@ Prefer motion? See the animated demos: [dashboard](https://raw.githubusercontent
 - [Privacy & data flow](#privacy--data-flow)
 - [Limitations & responsible use](#limitations--responsible-use)
 - [Contributing](#contributing)
+- [Author & contact](#author--contact)
 - [License](#license)
 
 ---
@@ -374,6 +375,21 @@ npm run lint
 ```
 
 Press **F5** in VS Code to launch the Extension Development Host. Recording screenshots? See [docs/CONTRIBUTING-MEDIA.md](docs/CONTRIBUTING-MEDIA.md).
+
+---
+
+## Author & contact
+
+Built by **Sergio Perez Ruiz**, Senior Software Engineer and author of *Código Sintético* (Spanish) / *Synthetic Code* (English).
+
+| Channel | Use it for |
+|---|---|
+| Email: [sergio@specsolid.com](mailto:sergio@specsolid.com) · [sergioide007@gmail.com](mailto:sergioide007@gmail.com) | Direct contact, collaborations, privacy requests |
+| [LinkedIn](https://www.linkedin.com/in/sergioide007/) | Professional contact and project news |
+| [Medium](https://medium.com/@sergioide007) | Articles on SpecSolid and agentic software engineering |
+| [YouTube: @codigosinteticolibro](https://www.youtube.com/@codigosinteticolibro) | Videos about the book *Código Sintético* (in Spanish) |
+| [GitHub Issues](https://github.com/sergioide007/manan-kanchu-code-ai/issues) | Bugs and feature requests |
+| [SECURITY.md](SECURITY.md) | Vulnerabilities: report them privately by email, not in a public issue |
 
 ---
 

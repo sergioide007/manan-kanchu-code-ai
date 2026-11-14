@@ -31,7 +31,7 @@ All contributions are welcome: bug fixes, new analyzers, new AI providers, UI im
 ## Code of Conduct
 
 Be respectful and constructive. Harassment of any kind is not tolerated.  
-Please open an [issue](https://github.com/sergioide007/manan-kanchu-code-ai/issues) if you witness problematic behavior.
+Please report problematic behavior privately to [sergio@specsolid.com](mailto:sergio@specsolid.com).
 
 ---
 

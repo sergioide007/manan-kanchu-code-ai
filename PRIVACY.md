@@ -127,7 +127,8 @@ Material changes will be noted in [CHANGELOG.md](CHANGELOG.md) and in a new vers
 
 ## 12. Contact
 
-Questions about privacy? Open an issue at:  
-https://github.com/sergioide007/manan-kanchu-code-ai/issues
+Questions about privacy, or a request about your personal data? Email **[sergio@specsolid.com](mailto:sergio@specsolid.com)**
+(alternative: [sergioide007@gmail.com](mailto:sergioide007@gmail.com)). Please do not put personal data in a public GitHub issue.
 
-Or email: sergioide007@gmail.com
+General questions that contain no personal data can also go to
+[GitHub Issues](https://github.com/sergioide007/manan-kanchu-code-ai/issues).

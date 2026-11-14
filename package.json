@@ -4,6 +4,11 @@
   "description": "Detect AI-generated code, scan vulnerabilities, audit policies, and protect your codebase with multi-provider AI intelligence.",
   "version": "1.0.1",
   "publisher": "sergioide007",
+  "author": {
+    "name": "Sergio Perez Ruiz",
+    "email": "sergio@specsolid.com",
+    "url": "https://www.specsolid.com"
+  },
   "icon": "resources/icon.png",
   "galleryBanner": {
     "color": "#0d1117",
