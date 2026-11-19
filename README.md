@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-blue)](https://marketplace.visualstudio.com/items?itemName=sergioide007.manan-kanchu-code-ai)
+[![Website](https://img.shields.io/badge/Website-SpecSolid-blueviolet)](https://www.specsolid.com/tools/manan-kanchu/)
 [![Version](https://img.shields.io/badge/version-1.0.1-green)](CHANGELOG.md)
 [![CI](https://github.com/sergioide007/manan-kanchu-code-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/sergioide007/manan-kanchu-code-ai/actions/workflows/ci.yml)
 [![Telemetry](https://img.shields.io/badge/telemetry-off%20by%20default-brightgreen)](PRIVACY.md)
